@@ -1,0 +1,36 @@
+{# app/templates/player/search.html #}
+{% extends 'base.html' %}
+
+{% block title %}Recherche de joueurs{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Recherche de joueurs</h1>
+
+<div class="mb-4">
+    <form action="{{ url_for('player.search') }}" method="get" class="d-flex">
+        <input type="text" name="q" class="form-control me-2" placeholder="Rechercher un joueur..." aria-label="Rechercher" value="{{ query }}">
+        <button class="btn btn-outline-primary" type="submit">Rechercher</button>
+    </form>
+</div>
+
+{% if players %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for player in players %}
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ player.name }}</h5>
+                <p class="card-text">{{ player.position }}</p>
+                <p class="card-text">Club: {{ player.club.name if player.club else 'Non spécifié' }}</p>
+                <a href="{{ url_for('player.player_stats', player_id=player.id) }}" class="btn btn-primary">Voir les statistiques</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Aucun joueur ne correspond à votre recherche "{{ query }}".
+</div>
+{% endif %}
+{% endblock %}

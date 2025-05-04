@@ -1,0 +1,368 @@
+# app/templates/player_stats.html
+{% extends 'base.html' %}
+
+{% block title %}Statistiques de {{ player.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .player-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    .player-photo {
+        width: 120px;
+        height: 150px;
+        margin-right: 20px;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    .stat-item {
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+    }
+    .stat-label {
+        font-size: 14px;
+        color: #6c757d;
+    }
+    #heatmapContainer {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        background-image: url('/static/img/football_pitch.png');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="player-header">
+    <img src="{{ player.photo_url|default('/static/img/player_placeholder.png') }}" alt="{{ player.name }}" class="player-photo">
+    <div>
+        <h1>{{ player.name }}</h1>
+        <p>Position: {{ player.position }}</p>
+        <p>Nationalité: {{ player.nationality }}</p>
+        <p>Date de naissance: {{ player.dateOfBirth }}</p>
+        <p>Club actuel: {{ player.current_club.name }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h2>Statistiques de la saison</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.matches_played }}</div>
+                    <div class="stat-label">Matchs joués</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.minutes_played }}</div>
+                    <div class="stat-label">Minutes jouées</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.goals }}</div>
+                    <div class="stat-label">Buts</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.assists }}</div>
+                    <div class="stat-label">Passes décisives</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.yellow_cards }}</div>
+                    <div class="stat-label">Cartons jaunes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.red_cards }}</div>
+                    <div class="stat-label">Cartons rouges</div>
+                </div>
+                
+                {% if player.position == 'Attaquant' %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.shots }}</div>
+                    <div class="stat-label">Tirs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.shots_on_target }}</div>
+                    <div class="stat-label">Tirs cadrés</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.conversion_rate }}%</div>
+                    <div class="stat-label">Taux de conversion</div>
+                </div>
+                {% endif %}
+                
+                {% if player.position == 'Milieu' %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.passes }}</div>
+                    <div class="stat-label">Passes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.pass_accuracy }}%</div>
+                    <div class="stat-label">Précision des passes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.key_passes }}</div>
+                    <div class="stat-label">Passes clés</div>
+                </div>
+                {% endif %}
+                
+                {% if player.position == 'Défenseur' %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.tackles }}</div>
+                    <div class="stat-label">Tacles</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.interceptions }}</div>
+                    <div class="stat-label">Interceptions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.clearances }}</div>
+                    <div class="stat-label">Dégagements</div>
+                </div>
+                {% endif %}
+                
+                {% if player.position == 'Gardien' %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.saves }}</div>
+                    <div class="stat-label">Arrêts</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.clean_sheets }}</div>
+                    <div class="stat-label">Clean sheets</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ player.stats.save_percentage }}%</div>
+                    <div class="stat-label">% d'arrêts</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h2>Performance par match</h2>
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h2>Carte de chaleur des positions</h2>
+            <p>Cette visualisation montre les zones du terrain où {{ player.name }} est le plus actif.</p>
+            <div id="heatmapContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h2>Comparaison avec d'autres joueurs</h2>
+            <div class="form-group mb-3">
+                <label for="comparePlayer">Comparer avec:</label>
+                <select class="form-control" id="comparePlayer">
+                    <option value="">Sélectionner un joueur...</option>
+                    {% for p in similar_players %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ p.club }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <canvas id="comparisonChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/heatmap.js@2.0.5/build/heatmap.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Charger les données de performance par match
+        createPerformanceChart();
+        
+        // Charger les données de la carte de chaleur
+        fetch('/player/{{ player.id }}/heatmap')
+            .then(response => response.json())
+            .then(data => {
+                createHeatmap(data);
+            })
+            .catch(error => console.error('Erreur lors du chargement des données de la carte de chaleur:', error));
+        
+        // Configuration du graphique de comparaison
+        const comparisonSelect = document.getElementById('comparePlayer');
+        comparisonSelect.addEventListener('change', function() {
+            const selectedPlayerId = this.value;
+            if (selectedPlayerId) {
+                fetch(`/player/compare/{{ player.id }}/${selectedPlayerId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        createComparisonChart(data);
+                    })
+                    .catch(error => console.error('Erreur lors de la comparaison:', error));
+            }
+        });
+    });
+
+    function createPerformanceChart() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        // Simuler des données pour l'exemple - à remplacer par des données réelles
+        const data = {
+            labels: ['Match 1', 'Match 2', 'Match 3', 'Match 4', 'Match 5'],
+            datasets: []
+        };
+        
+        {% if player.position == 'Attaquant' %}
+        data.datasets.push({
+            label: 'Buts',
+            data: [1, 0, 2, 0, 1],
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)'
+        });
+        {% endif %}
+        
+        {% if player.position in ['Attaquant', 'Milieu'] %}
+        data.datasets.push({
+            label: 'Passes décisives',
+            data: [0, 1, 0, 2, 0],
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)'
+        });
+        {% endif %}
+        
+        {% if player.position in ['Milieu', 'Défenseur'] %}
+        data.datasets.push({
+            label: 'Tacles',
+            data: [3, 2, 4, 2, 5],
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)'
+        });
+        {% endif %}
+        
+        {% if player.position == 'Gardien' %}
+        data.datasets.push({
+            label: 'Arrêts',
+            data: [3, 5, 2, 4, 6],
+            borderColor: 'rgba(153, 102, 255, 1)',
+            backgroundColor: 'rgba(153, 102, 255, 0.2)'
+        });
+        {% endif %}
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Performance par match'
+                    }
+                }
+            }
+        });
+    }
+
+    function createHeatmap(data) {
+        const container = document.getElementById('heatmapContainer');
+        const heatmapInstance = h337.create({
+            container: container,
+            radius: 20,
+            maxOpacity: 0.8,
+            minOpacity: 0.1,
+            blur: 0.8
+        });
+        
+        // Adapter les données au format de heatmap.js
+        const points = data.heatmapData.map(point => ({
+            x: Math.round((point.x / data.pitchDimensions.length) * container.offsetWidth),
+            y: Math.round((point.y / data.pitchDimensions.width) * container.offsetHeight),
+            value: point.value
+        }));
+        
+        heatmapInstance.setData({
+            max: Math.max(...data.heatmapData.map(p => p.value)),
+            data: points
+        });
+    }
+
+    function createComparisonChart(data) {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        
+        // Supprimer le graphique existant s'il existe
+        if (window.comparisonChartInstance) {
+            window.comparisonChartInstance.destroy();
+        }
+        
+        window.comparisonChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: data.categories,
+                datasets: [
+                    {
+                        label: data.player1.name,
+                        data: data.player1.values,
+                        fill: true,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(255, 99, 132, 1)'
+                    },
+                    {
+                        label: data.player2.name,
+                        data: data.player2.values,
+                        fill: true,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+                    }
+                ]
+            },
+            options: {
+                elements: {
+                    line: {
+                        tension: 0.1
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Comparaison des joueurs'
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

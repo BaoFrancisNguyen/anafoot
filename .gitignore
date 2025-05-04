@@ -1,0 +1,28 @@
+# Environnement virtuel Python
+env/
+venv/
+ENV/
+
+# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+logs/
+*.log
+
+# Fichiers locaux de SQLite
+*.sqlite3
+*.db
+
+# Fichiers de configuration locaux
+instance/
+.webassets-cache
+
+# Environnement
+.env
+.flaskenv
+
+# Dossiers générés
+screenshots/

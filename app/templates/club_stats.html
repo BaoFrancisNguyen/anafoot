@@ -1,0 +1,242 @@
+# app/templates/club_stats.html
+{% extends 'base.html' %}
+
+{% block title %}Statistiques de {{ club.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    .club-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    .club-logo {
+        width: 100px;
+        height: 100px;
+        margin-right: 20px;
+        object-fit: contain;
+    }
+    .performance-timeline {
+        margin-top: 30px;
+    }
+    .form-indicator {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 50%;
+        color: white;
+        margin-right: 5px;
+    }
+    .form-W {
+        background-color: #28a745;
+    }
+    .form-D {
+        background-color: #ffc107;
+    }
+    .form-L {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="club-header">
+    <img src="{{ club.crest }}" alt="{{ club.name }}" class="club-logo">
+    <div>
+        <h1>{{ club.name }}</h1>
+        <p>Stade: {{ club.venue }}</p>
+        <p>Fondé en: {{ club.founded }}</p>
+        <p>Entraîneur: {{ club.coach }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h2>Performance récente</h2>
+            <div class="form-display">
+                {% for match in club.recent_form %}
+                    <span class="form-indicator form-{{ match.result }}">{{ match.result }}</span>
+                {% endfor %}
+            </div>
+            <div class="mt-3">
+                <h4>Derniers 5 matchs:</h4>
+                <p>{{ club.recent_form|length }} joués: 
+                   <span class="text-success">{{ club.win_count }} V</span> / 
+                   <span class="text-warning">{{ club.draw_count }} N</span> / 
+                   <span class="text-danger">{{ club.loss_count }} D</span>
+                </p>
+                <p>Buts marqués: {{ club.goals_scored }}</p>
+                <p>Buts encaissés: {{ club.goals_conceded }}</p>
+                <p>Différence de buts: {{ club.goal_difference }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h2>Statistiques de la saison</h2>
+            <canvas id="seasonStatsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card performance-timeline">
+            <h2>Performance dans le temps</h2>
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h2>Calendrier des prochains matchs</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Compétition</th>
+                        <th>Domicile/Extérieur</th>
+                        <th>Adversaire</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in club.upcoming_matches %}
+                    <tr>
+                        <td>{{ match.date }}</td>
+                        <td>{{ match.competition }}</td>
+                        <td>{% if match.is_home %}Domicile{% else %}Extérieur{% endif %}</td>
+                        <td>{{ match.opponent }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Charger les données de performance via API
+        fetch('/club/{{ club.id }}/performance')
+            .then(response => response.json())
+            .then(data => {
+                createPerformanceChart(data);
+                createSeasonStatsChart(data);
+            })
+            .catch(error => console.error('Erreur lors du chargement des données:', error));
+    });
+
+    function createPerformanceChart(data) {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        // Extraire les dates et les points pour le graphique
+        const labels = data.timeline.map(match => new Date(match.date).toLocaleDateString());
+        const points = [];
+        let runningTotal = 0;
+        
+        data.timeline.forEach(match => {
+            if (match.result === 'W') runningTotal += 3;
+            else if (match.result === 'D') runningTotal += 1;
+            points.push(runningTotal);
+        });
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Points accumulés',
+                    data: points,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Progression des points dans le temps'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function createSeasonStatsChart(data) {
+        const ctx = document.getElementById('seasonStatsChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: [
+                    'Buts marqués',
+                    'Défense (inv)',
+                    'Possession',
+                    'Passes réussies',
+                    'Duels gagnés',
+                    'Tacles'
+                ],
+                datasets: [{
+                    label: '{{ club.name }}',
+                    data: [
+                        data.averageGoalsScored * 10,
+                        10 - data.averageGoalsConceded * 10,
+                        data.averagePossession || 50,
+                        data.passAccuracy || 75,
+                        data.duelsWonPercentage || 50,
+                        data.tacklesPerMatch || 15
+                    ],
+                    fill: true,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+                }]
+            },
+            options: {
+                elements: {
+                    line: {
+                        tension: 0.1
+                    }
+                },
+                scale: {
+                    min: 0,
+                    max: 10
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Statistiques de la saison'
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

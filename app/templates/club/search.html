@@ -1,0 +1,44 @@
+{# app/templates/club/search.html #}
+{% extends 'base.html' %}
+
+{% block title %}Recherche de clubs{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Recherche de clubs</h1>
+
+<div class="mb-4">
+    <form action="{{ url_for('club.search') }}" method="get" class="d-flex">
+        <input type="text" name="q" class="form-control me-2" placeholder="Rechercher un club..." aria-label="Rechercher" value="{{ query }}">
+        <button class="btn btn-outline-primary" type="submit">Rechercher</button>
+    </form>
+</div>
+
+{% if clubs %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for club in clubs %}
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    {% if club.crest %}
+                    <img src="{{ club.crest }}" alt="{{ club.name }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                    {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-shield"></i>
+                    </div>
+                    {% endif %}
+                    <h5 class="card-title mb-0">{{ club.name }}</h5>
+                </div>
+                
+                <a href="{{ url_for('club.club_stats', club_id=club.id) }}" class="btn btn-primary">Voir les statistiques</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Aucun club ne correspond à votre recherche "{{ query }}".
+</div>
+{% endif %}
+{% endblock %}

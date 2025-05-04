@@ -1,0 +1,145 @@
+{# app/templates/whoscored/view_league_stats.html #}
+{% extends 'base.html' %}
+
+{% block title %}Statistiques {{ category }} - {{ league_name }} ({{ season_id }}){% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Statistiques {{ category }} - {{ league_name }} ({{ season_id }})</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">Tableau des statistiques</h2>
+            <div>
+                <a href="{{ url_for('whoscored.import_data') }}" class="btn btn-sm btn-primary">Retour à l'import</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                {{ table_html | safe }}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Visualisations</h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="h6 mb-0">Top 10 joueurs</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="topPlayersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="h6 mb-0">Distribution par poste</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="positionDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="h6 mb-0">Comparaison par équipe</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="teamComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Cette partie serait normalement générée dynamiquement côté serveur
+    // avec les vraies données issues du CSV
+    document.addEventListener('DOMContentLoaded', function() {
+        // Graphique Top 10 joueurs
+        const topPlayersCtx = document.getElementById('topPlayersChart').getContext('2d');
+        new Chart(topPlayersCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Joueur 1', 'Joueur 2', 'Joueur 3', 'Joueur 4', 'Joueur 5', 'Joueur 6', 'Joueur 7', 'Joueur 8', 'Joueur 9', 'Joueur 10'],
+                datasets: [{
+                    label: 'Score',
+                    data: [9.5, 9.2, 9.0, 8.8, 8.7, 8.6, 8.5, 8.4, 8.3, 8.2],
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Graphique Distribution par poste
+        const positionCtx = document.getElementById('positionDistributionChart').getContext('2d');
+        new Chart(positionCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Attaquants', 'Milieux', 'Défenseurs', 'Gardiens'],
+                datasets: [{
+                    data: [25, 35, 30, 10],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            }
+        });
+        
+        // Graphique Comparaison par équipe
+        const teamCtx = document.getElementById('teamComparisonChart').getContext('2d');
+        new Chart(teamCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Équipe 1', 'Équipe 2', 'Équipe 3', 'Équipe 4', 'Équipe 5', 'Équipe 6', 'Équipe 7', 'Équipe 8'],
+                datasets: [{
+                    label: 'Moyenne',
+                    data: [7.8, 7.6, 7.5, 7.4, 7.3, 7.2, 7.1, 7.0],
+                    backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

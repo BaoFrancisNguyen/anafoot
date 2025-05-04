@@ -1,0 +1,80 @@
+{# app/templates/whoscored/index.html #}
+{% extends 'base.html' %}
+
+{% block title %}Importation des données WhoScored{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Importation des données depuis WhoScored</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Présentation</h2>
+        </div>
+        <div class="card-body">
+            <p>Ce module permet d'importer les données statistiques de football depuis <a href="https://fr.whoscored.com" target="_blank">WhoScored.com</a>, un site spécialisé dans les statistiques détaillées de football.</p>
+            <p>WhoScored propose plus de 200 statistiques brutes pour les joueurs, incluant des catégories comme :</p>
+            <ul>
+                <li><strong>Statistiques défensives</strong> : tacles, interceptions, dégagements...</li>
+                <li><strong>Statistiques offensives</strong> : buts, passes décisives, tirs...</li>
+                <li><strong>Statistiques de passes</strong> : passes réussies, passes clés, précision...</li>
+                <li><strong>Statistiques détaillées</strong> : duels aériens, fautes, hors-jeu...</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Actions disponibles</h2>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('whoscored.import_data') }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Importer depuis WhoScored</h5>
+                            </div>
+                            <p class="mb-1">Importer des équipes, joueurs ou statistiques directement depuis le site WhoScored</p>
+                        </a>
+                        <a href="{{ url_for('whoscored.upload_csv') }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Importer depuis un CSV</h5>
+                            </div>
+                            <p class="mb-1">Charger des données à partir d'un fichier CSV exporté depuis WhoScored ou une autre source</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Ligues disponibles</h2>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for code, league in leagues.items() %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ league.name }}</h5>
+                                <small>{{ league.country }}</small>
+                            </div>
+                            <p class="mb-1">ID: {{ league.id }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+
+

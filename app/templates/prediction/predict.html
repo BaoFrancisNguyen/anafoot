@@ -1,0 +1,93 @@
+{# app/templates/prediction/predict.html #}
+{% extends 'base.html' %}
+
+{% block title %}Prédiction de match{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Prédiction de match</h1>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="h5 mb-0">Entrez les détails du match</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('predict.predict_match') }}">
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <label for="home_team" class="form-label">Équipe à domicile</label>
+                    <select class="form-select" id="home_team" name="home_team" required>
+                        <option value="">Sélectionner une équipe...</option>
+                        {% for team in teams %}
+                        <option value="{{ team.id }}">{{ team.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 text-center d-flex align-items-end justify-content-center">
+                    <span style="font-size: 24px;">vs</span>
+                </div>
+                <div class="col-md-5">
+                    <label for="away_team" class="form-label">Équipe à l'extérieur</label>
+                    <select class="form-select" id="away_team" name="away_team" required>
+                        <option value="">Sélectionner une équipe...</option>
+                        {% for team in teams %}
+                        <option value="{{ team.id }}">{{ team.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="match_date" class="form-label">Date du match</label>
+                <input type="date" class="form-control" id="match_date" name="match_date" required>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Prédire le résultat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if prediction %}
+<div class="card mt-4">
+    <div class="card-header bg-primary text-white">
+        <h2 class="h5 mb-0">Résultat prédit</h2>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="text-center">
+                <img src="{{ prediction.home_team_logo }}" alt="{{ prediction.home_team }}" style="width: 60px; height: 60px; object-fit: contain;">
+                <h3 class="h5 mt-2">{{ prediction.home_team }}</h3>
+            </div>
+            
+            <div class="score-display bg-light p-3 rounded">
+                <h2 class="mb-0">{{ prediction.predicted_score }}</h2>
+            </div>
+            
+            <div class="text-center">
+                <img src="{{ prediction.away_team_logo }}" alt="{{ prediction.away_team }}" style="width: 60px; height: 60px; object-fit: contain;">
+                <h3 class="h5 mt-2">{{ prediction.away_team }}</h3>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h4>Analyse</h4>
+            <p>{{ prediction.explanation }}</p>
+        </div>
+        
+        <div class="mt-4">
+            <h4>Niveau de confiance:</h4>
+            <div class="progress mb-2">
+                {% if prediction.confidence == 'élevée' %}
+                <div class="progress-bar bg-success" role="progressbar" style="width: 85%">Élevé</div>
+                {% elif prediction.confidence == 'moyenne' %}
+                <div class="progress-bar bg-warning" role="progressbar" style="width: 60%">Moyen</div>
+                {% else %}
+                <div class="progress-bar bg-danger" role="progressbar" style="width: 30%">Faible</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

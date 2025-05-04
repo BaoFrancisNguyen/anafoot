@@ -1,0 +1,229 @@
+{# app/templates/whoscored/view_player_stats.html #}
+{% extends 'base.html' %}
+
+{% block title %}Statistiques de {{ player.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Statistiques de {{ player.name }}</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">Informations générales</h2>
+            <div>
+                <a href="{{ url_for('whoscored.index') }}" class="btn btn-sm btn-primary">Retour</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <img src="{{ player.photo_url or url_for('static', filename='img/player_placeholder.png') }}" alt="{{ player.name }}" class="img-fluid rounded mb-3">
+                </div>
+                <div class="col-md-8">
+                    <h3>{{ player.name }}</h3>
+                    <p><strong>Équipe:</strong> {{ player.club.name }}</p>
+                    <p><strong>Position:</strong> {{ player.position }}</p>
+                    <p><strong>Nationalité:</strong> {{ player.nationality or 'Non spécifiée' }}</p>
+                    <p><strong>Date de naissance:</strong> {{ player.date_of_birth.strftime('%d/%m/%Y') if player.date_of_birth else 'Non spécifiée' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="stats-tabs" role="tablist">
+                {% for s in stats %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if loop.first %}active{% endif %}" id="stats-{{ s.season }}-tab" data-bs-toggle="tab" data-bs-target="#stats-{{ s.season }}" type="button" role="tab" aria-controls="stats-{{ s.season }}" aria-selected="{{ 'true' if loop.first else 'false' }}">
+                        Saison {{ s.season }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="stats-tabs-content">
+                {% for s in stats %}
+                <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="stats-{{ s.season }}" role="tabpanel" aria-labelledby="stats-{{ s.season }}-tab">
+                    <h3 class="h5 mb-3">Statistiques générales</h3>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Matchs joués</h5>
+                                    <p class="card-text display-4">{{ s.matches_played or 0 }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Minutes jouées</h5>
+                                    <p class="card-text display-4">{{ s.minutes_played or 0 }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Buts</h5>
+                                    <p class="card-text display-4">{{ s.goals or 0 }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Passes décisives</h5>
+                                    <p class="card-text display-4">{{ s.assists or 0 }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h3 class="h5 mb-3">Statistiques offensives</h3>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Tirs</th>
+                                        <td>{{ s.shots or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tirs cadrés</th>
+                                        <td>{{ s.shots_on_target or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Précision des tirs</th>
+                                        <td>{{ ((s.shots_on_target or 0) / (s.shots or 1) * 100) | round(1) }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Dribbles réussis</th>
+                                        <td>{{ s.dribbles_won or 0 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="h5 mb-3">Statistiques défensives</h3>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Tacles</th>
+                                        <td>{{ s.tackles or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Interceptions</th>
+                                        <td>{{ s.interceptions or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Dégagements</th>
+                                        <td>{{ s.clearances or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Duels gagnés</th>
+                                        <td>{{ s.duels_won or 0 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h3 class="h5 mb-3">Statistiques de passes</h3>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Passes</th>
+                                        <td>{{ s.passes or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Passes réussies</th>
+                                        <td>{{ s.passes_completed or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Précision des passes</th>
+                                        <td>{{ ((s.passes_completed or 0) / (s.passes or 1) * 100) | round(1) }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Passes clés</th>
+                                        <td>{{ s.key_passes or 0 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="h5 mb-3">Discipline</h3>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Cartons jaunes</th>
+                                        <td>{{ s.yellow_cards or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cartons rouges</th>
+                                        <td>{{ s.red_cards or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fautes commises</th>
+                                        <td>{{ s.fouls or 0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Hors-jeu</th>
+                                        <td>{{ s.offsides or 0 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <h3 class="h5 mb-3">Évolution des performances</h3>
+                            <canvas id="performanceChart-{{ s.season }}"></canvas>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for s in stats %}
+        // Graphique d'évolution des performances pour la saison {{ s.season }}
+        const ctx{{ s.season | replace('/', '_') }} = document.getElementById('performanceChart-{{ s.season }}').getContext('2d');
+        new Chart(ctx{{ s.season | replace('/', '_') }}, {
+            type: 'line',
+            data: {
+                labels: ['Match 1', 'Match 2', 'Match 3', 'Match 4', 'Match 5', 'Match 6', 'Match 7', 'Match 8', 'Match 9', 'Match 10'],
+                datasets: [{
+                    label: 'Note',
+                    data: [7.5, 6.8, 8.2, 7.9, 8.5, 7.2, 6.9, 7.8, 8.3, 7.6],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 6,
+                        max: 10
+                    }
+                }
+            }
+        });
+        {% endfor %}
+    });
+</script>
+{% endblock %}

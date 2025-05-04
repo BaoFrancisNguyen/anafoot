@@ -1,0 +1,138 @@
+{# app/templates/whoscored/import.html #}
+{% extends 'base.html' %}
+
+{% block title %}Importer depuis WhoScored{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Importer des données depuis WhoScored</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Formulaire d'importation</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('whoscored.import_data') }}">
+                <div class="mb-3">
+                    <label for="league" class="form-label">Ligue</label>
+                    <select class="form-select" id="league" name="league" required>
+                        <option value="">Sélectionner une ligue</option>
+                        {% for code, league in leagues.items() %}
+                        <option value="{{ league.id }}">{{ league.name }} ({{ league.country }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="season" class="form-label">Saison</label>
+                    <select class="form-select" id="season" name="season" required>
+                        <option value="">Sélectionner une saison</option>
+                        <option value="9618">2023/2024</option>
+                        <option value="8826">2022/2023</option>
+                        <option value="8044">2021/2022</option>
+                        <option value="7728">2020/2021</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="import_type" class="form-label">Type d'importation</label>
+                    <select class="form-select" id="import_type" name="import_type" required>
+                        <option value="">Sélectionner un type</option>
+                        <option value="teams">Équipes</option>
+                        <option value="players">Joueurs</option>
+                        <option value="player_stats">Statistiques des joueurs</option>
+                        <option value="league_stats">Statistiques de la ligue</option>
+                    </select>
+                </div>
+                
+                <div id="stats_category_container" class="mb-3" style="display: none;">
+                    <label for="stats_category" class="form-label">Catégorie de statistiques</label>
+                    <select class="form-select" id="stats_category" name="stats_category">
+                        <option value="Summary">Résumé</option>
+                        <option value="Defensive">Défensive</option>
+                        <option value="Offensive">Offensive</option>
+                        <option value="Passing">Passes</option>
+                        <option value="Detailed">Détaillées</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="use_proxy" name="use_proxy">
+                    <label class="form-check-label" for="use_proxy">Utiliser un proxy</label>
+                </div>
+                
+                <div id="proxy_container" class="mb-3" style="display: none;">
+                    <label for="proxy" class="form-label">Adresse du proxy</label>
+                    <input type="text" class="form-control" id="proxy" name="proxy" placeholder="http://user:pass@proxy.example.com:8080">
+                </div>
+                
+                <div id="selenium_options" class="mb-3" style="display: none;">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="headless" name="headless" checked>
+                        <label class="form-check-label" for="headless">Mode headless (sans interface graphique)</label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="chrome_path" class="form-label">Chemin vers Chrome (optionnel)</label>
+                        <input type="text" class="form-control" id="chrome_path" name="chrome_path" placeholder="/usr/bin/google-chrome">
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Importer</button>
+                    <a href="{{ url_for('whoscored.index') }}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Avertissements</h2>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <h5>Soyez patient</h5>
+                <p>L'importation des données peut prendre plusieurs minutes, surtout pour les statistiques détaillées des joueurs.</p>
+            </div>
+            
+            <div class="alert alert-info">
+                <h5>Protection anti-bot</h5>
+                <p>WhoScored possède des mécanismes de détection de bots. L'utilisation d'un proxy ou la désactivation du mode headless peut aider à contourner ces limitations.</p>
+            </div>
+            
+            <div class="alert alert-danger">
+                <h5>Usage éthique</h5>
+                <p>Veuillez respecter les conditions d'utilisation de WhoScored et n'utiliser les données qu'à des fins personnelles et non commerciales.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const importTypeSelect = document.getElementById('import_type');
+        const statsCategoryContainer = document.getElementById('stats_category_container');
+        const seleniumOptions = document.getElementById('selenium_options');
+        const useProxyCheckbox = document.getElementById('use_proxy');
+        const proxyContainer = document.getElementById('proxy_container');
+        
+        importTypeSelect.addEventListener('change', function() {
+            if (this.value === 'league_stats') {
+                statsCategoryContainer.style.display = 'block';
+                seleniumOptions.style.display = 'block';
+            } else if (this.value === 'player_stats') {
+                statsCategoryContainer.style.display = 'none';
+                seleniumOptions.style.display = 'block';
+            } else {
+                statsCategoryContainer.style.display = 'none';
+                seleniumOptions.style.display = 'none';
+            }
+        });
+        
+        useProxyCheckbox.addEventListener('change', function() {
+            proxyContainer.style.display = this.checked ? 'block' : 'none';
+        });
+    });
+</script>
+{% endblock %}

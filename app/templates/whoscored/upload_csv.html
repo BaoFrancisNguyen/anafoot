@@ -1,0 +1,72 @@
+{# app/templates/whoscored/upload_csv.html #}
+{% extends 'base.html' %}
+
+{% block title %}Importer des données depuis un CSV{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Importer des données depuis un fichier CSV</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Formulaire d'importation</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('whoscored.upload_csv') }}" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="csv_file" class="form-label">Fichier CSV</label>
+                    <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                    <div class="form-text">Sélectionnez un fichier CSV contenant les données à importer.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="data_type" class="form-label">Type de données</label>
+                    <select class="form-select" id="data_type" name="data_type" required>
+                        <option value="">Sélectionner un type</option>
+                        <option value="player_stats">Statistiques des joueurs</option>
+                        <option value="matches">Matchs</option>
+                    </select>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Importer</button>
+                    <a href="{{ url_for('whoscored.index') }}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Format des fichiers CSV</h2>
+        </div>
+        <div class="card-body">
+            <h3 class="h6">Statistiques des joueurs</h3>
+            <p>Le fichier CSV doit contenir les colonnes suivantes :</p>
+            <ul>
+                <li><strong>Player</strong> : Nom du joueur</li>
+                <li><strong>Team</strong> : Nom de l'équipe</li>
+                <li><strong>Position</strong> : Poste du joueur</li>
+                <li><strong>Apps</strong> : Nombre de matchs joués</li>
+                <li><strong>Goals</strong> : Nombre de buts</li>
+                <li><strong>Assists</strong> : Nombre de passes décisives</li>
+                <li><strong>Yellow Cards</strong> : Nombre de cartons jaunes</li>
+                <li><strong>Red Cards</strong> : Nombre de cartons rouges</li>
+                <li>... et les autres statistiques disponibles</li>
+            </ul>
+            
+            <h3 class="h6">Matchs</h3>
+            <p>Le fichier CSV doit contenir les colonnes suivantes :</p>
+            <ul>
+                <li><strong>Date</strong> : Date du match (format YYYY-MM-DD)</li>
+                <li><strong>HomeTeam</strong> : Nom de l'équipe à domicile</li>
+                <li><strong>AwayTeam</strong> : Nom de l'équipe à l'extérieur</li>
+                <li><strong>FTHG</strong> : Nombre de buts de l'équipe à domicile</li>
+                <li><strong>FTAG</strong> : Nombre de buts de l'équipe à l'extérieur</li>
+                <li><strong>League</strong> (optionnel) : Nom de la ligue/compétition</li>
+                <li><strong>Season</strong> (optionnel) : Saison (format YYYY/YYYY)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
