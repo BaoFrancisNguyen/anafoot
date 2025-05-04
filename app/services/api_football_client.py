@@ -446,53 +446,53 @@ class APIFootballClient:
         
         from app.models.player import Player
         from app.models.club import Club
+        from app.models.player_stats import PlayerStats
         
         players_count = 0
+        stats_count = 0
         
         for player_data in data['response']:
+            # Validation des données
             if not isinstance(player_data, dict):
                 logger.warning(f"Format de données de joueur inattendu: {type(player_data)}")
                 continue
-                
+                    
             player = player_data.get('player', {})
-            
-            if not isinstance(player, dict):
-                logger.warning(f"Structure de données de joueur inattendue: {type(player)}")
-                continue
-            
-            # Vérifier les informations de l'équipe
             statistics = player_data.get('statistics', [])
-            team_data = {}
             
-            if statistics and isinstance(statistics, list) and len(statistics) > 0:
-                team_data = statistics[0].get('team', {})
+            # IMPORTANT: Ajouter des logs pour voir ce qui se passe
+            logger.info(f"Traitement du joueur: {player.get('name')}")
+            logger.info(f"Nombre de statistiques disponibles: {len(statistics)}")
             
-            if not team_data or not isinstance(team_data, dict):
-                logger.warning(f"Données d'équipe manquantes ou invalides pour le joueur {player.get('name')}")
+            if not isinstance(player, dict) or not isinstance(statistics, list):
+                logger.warning(f"Structure de données inattendue: player {type(player)}, statistics {type(statistics)}")
                 continue
             
-            # Trouver le club associé
-            if team_data.get('id'):
-                club = Club.query.filter_by(api_id=team_data.get('id')).first()
-                club_id = club.id if club else None
-            else:
-                club_id = None
-                logger.warning(f"ID d'équipe manquant pour le joueur {player.get('name')}")
-            
-            # Vérifier les informations de naissance
-            birth_data = player.get('birth', {})
-            date_of_birth = None
-            
-            if birth_data and isinstance(birth_data, dict) and birth_data.get('date'):
-                try:
-                    date_of_birth = datetime.strptime(birth_data.get('date'), '%Y-%m-%d')
-                except Exception as e:
-                    logger.warning(f"Format de date invalide pour le joueur {player.get('name')}: {e}")
-            
-            # Créer ou mettre à jour le joueur dans la base de données
+            # Trouver le joueur dans la base de données
             db_player = Player.query.filter_by(api_id=player.get('id')).first()
             
             if not db_player:
+                # Créer le joueur s'il n'existe pas
+                logger.info(f"Création du joueur: {player.get('name')}")
+                
+                # Extraire la date de naissance si disponible
+                date_of_birth = None
+                birth_data = player.get('birth', {})
+                if birth_data and birth_data.get('date'):
+                    try:
+                        date_of_birth = datetime.strptime(birth_data.get('date'), '%Y-%m-%d')
+                    except Exception as e:
+                        logger.warning(f"Erreur lors de la conversion de la date: {e}")
+                
+                # Récupérer l'équipe depuis les statistiques
+                club_id = None
+                if statistics and statistics[0].get('team', {}).get('id'):
+                    team_id = statistics[0].get('team', {}).get('id')
+                    club = Club.query.filter_by(api_id=team_id).first()
+                    if club:
+                        club_id = club.id
+                
+                # Créer le joueur
                 db_player = Player(
                     api_id=player.get('id'),
                     name=player.get('name'),
@@ -505,22 +505,68 @@ class APIFootballClient:
                     club_id=club_id
                 )
                 db.session.add(db_player)
+                db.session.flush()  # Pour obtenir l'ID sans commit complet
                 players_count += 1
             else:
-                # Mettre à jour les informations existantes
-                db_player.name = player.get('name')
-                db_player.first_name = player.get('firstname')
-                db_player.last_name = player.get('lastname')
-                db_player.date_of_birth = date_of_birth
-                db_player.nationality = player.get('nationality')
-                db_player.position = player.get('position')
-                db_player.photo_url = player.get('photo')
-                if club_id:
-                    db_player.club_id = club_id
-                players_count += 1
+                logger.info(f"Mise à jour du joueur: {player.get('name')}")
+                
+                # Mise à jour des données du joueur
+                db_player.name = player.get('name', db_player.name)
+                db_player.position = player.get('position', db_player.position)
+                
+                # Mise à jour du club si disponible
+                if statistics and statistics[0].get('team', {}).get('id'):
+                    team_id = statistics[0].get('team', {}).get('id')
+                    club = Club.query.filter_by(api_id=team_id).first()
+                    if club:
+                        db_player.club_id = club.id
+            
+            # IMPORTANT: Traiter les statistiques
+            for stat in statistics:
+                # Extraire les informations de la ligue et de la saison
+                league = stat.get('league', {})
+                season = str(league.get('season', ''))
+                
+                if not season:
+                    logger.warning(f"Saison manquante pour les statistiques de {db_player.name}")
+                    continue
+                
+                # Formater la saison (par exemple, "2023" devient "2023/2024")
+                try:
+                    season_year = int(season)
+                    formatted_season = f"{season_year}/{season_year+1}"
+                except:
+                    formatted_season = season
+                
+                logger.info(f"Traitement des statistiques de {db_player.name} pour la saison {formatted_season}")
+                
+                # Rechercher ou créer l'enregistrement de statistiques
+                db_stats = PlayerStats.query.filter_by(player_id=db_player.id, season=formatted_season).first()
+                
+                if not db_stats:
+                    db_stats = PlayerStats(player_id=db_player.id, season=formatted_season)
+                    db.session.add(db_stats)
+                    logger.info(f"Création des statistiques pour {db_player.name}, saison {formatted_season}")
+                else:
+                    logger.info(f"Mise à jour des statistiques pour {db_player.name}, saison {formatted_season}")
+                
+                # Mettre à jour les statistiques
+                try:
+                    # IMPORTANT: Appeler la méthode qui met à jour les statistiques
+                    self._update_player_stats_from_api(db_stats, stat)
+                    stats_count += 1
+                except Exception as e:
+                    logger.error(f"Erreur lors de la mise à jour des statistiques: {str(e)}")
+                    import traceback
+                    logger.error(traceback.format_exc())
         
-        db.session.commit()
-        logger.info(f"Importation de {players_count} joueurs terminée")
+        # Sauvegarder toutes les modifications
+        try:
+            db.session.commit()
+            logger.info(f"Importation des joueurs terminée: {players_count} joueurs, {stats_count} statistiques")
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde: {str(e)}")
+            db.session.rollback()
     
     def _process_matches_data(self, data):
         """

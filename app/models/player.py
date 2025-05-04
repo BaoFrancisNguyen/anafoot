@@ -24,43 +24,33 @@ class Player(db.Model):
     def __repr__(self):
         return f'<Player {self.name}>'
     
-def get_current_season_stats(self):
-    """
-    Récupère les statistiques du joueur pour la saison actuelle ou récente
-    Cherche dans plusieurs formats de saison pour maximiser les chances de trouver des données
-    """
-    from app.models.player_stats import PlayerStats
-    import logging
-    
-    # Liste des saisons possibles, de la plus récente à la plus ancienne
-    # Inclut différents formats de saison pour maximiser les chances de correspondance
-    possible_seasons = [
-        "2024/2025", "2024-2025", "2024", 
-        "2023/2024", "2023-2024", "2023",
-        "2022/2023", "2022-2023", "2022"
-    ]
-    
-    # Recherche dans chaque format de saison jusqu'à trouver des statistiques
-    stats = None
-    matched_season = None
-    
-    for season in possible_seasons:
-        try:
-            # Essayer de trouver des statistiques pour cette saison
-            stats_record = PlayerStats.query.filter_by(player_id=self.id, season=season).first()
-            if stats_record:
-                stats = stats_record
-                matched_season = season
-                # Sortir de la boucle dès qu'on trouve des statistiques
-                break
-        except Exception as e:
-            logging.warning(f"Erreur lors de la recherche de statistiques pour la saison {season}: {str(e)}")
-            continue
-    
-    # Si aucune statistique n'est trouvée, créer un dictionnaire avec des valeurs par défaut
-    if not stats:
-        logging.info(f"Aucune statistique trouvée pour le joueur {self.id} ({self.name})")
+    def get_current_season_stats(self):
+        """
+        Récupère les statistiques du joueur pour la saison disponible
+        """
+        from app.models.player_stats import PlayerStats
+        import logging
         
+        # Récupérer toutes les statistiques de ce joueur
+        all_stats = PlayerStats.query.filter_by(player_id=self.id).all()
+        
+        # Si des statistiques existent, prendre la plus récente
+        if all_stats:
+            # Trier par saison (en supposant un format comme "2023/2024")
+            # Cette méthode simple fonctionne pour les formats standard
+            sorted_stats = sorted(all_stats, key=lambda x: x.season, reverse=True)
+            stats = sorted_stats[0]
+            
+            # Convertir en dictionnaire
+            stats_dict = {}
+            for attr in dir(stats):
+                # Exclure les attributs privés et les méthodes
+                if not attr.startswith('_') and not callable(getattr(stats, attr)):
+                    stats_dict[attr] = getattr(stats, attr)
+            
+            return stats_dict
+        
+        # Si aucune statistique n'est trouvée, renvoyer des statistiques par défaut
         # Base de statistiques pour tous les joueurs
         default_stats = {
             "matches_played": 0,
@@ -83,7 +73,7 @@ def get_current_season_stats(self):
             "duels_won": 0,
             "fouls": 0,
             "fouls_drawn": 0,
-            "season": "2024/2025"  # Saison par défaut
+            "season": "2023/2024"  # Changé pour correspondre à l'importation
         }
         
         # Ajouter des statistiques spécifiques selon le poste
@@ -118,29 +108,3 @@ def get_current_season_stats(self):
             })
             
         return default_stats
-    
-    # Si des statistiques ont été trouvées mais sont stockées comme un objet
-    # Convertir en dictionnaire
-    if not isinstance(stats, dict):
-        try:
-            # Si stats a une méthode to_dict, l'utiliser
-            if hasattr(stats, 'to_dict') and callable(getattr(stats, 'to_dict')):
-                return stats.to_dict()
-            
-            # Sinon, créer manuellement un dictionnaire à partir des attributs
-            stats_dict = {}
-            for attr in dir(stats):
-                # Exclure les attributs privés et les méthodes
-                if not attr.startswith('_') and not callable(getattr(stats, attr)):
-                    stats_dict[attr] = getattr(stats, attr)
-            
-            logging.info(f"Statistiques trouvées pour le joueur {self.id} ({self.name}) de la saison {matched_season}")
-            return stats_dict
-        except Exception as e:
-            logging.error(f"Erreur lors de la conversion des statistiques en dictionnaire: {str(e)}")
-            # En cas d'erreur, retourner l'objet original
-            return stats
-    
-    # Si stats est déjà un dictionnaire, le retourner directement
-    logging.info(f"Statistiques trouvées pour le joueur {self.id} ({self.name}) de la saison {matched_season}")
-    return stats
