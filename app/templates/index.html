@@ -26,7 +26,7 @@
                     <h2 class="card-title text-center h5 mb-3">Statistiques de Clubs</h2>
                     <p class="card-text text-center">Accédez à des statistiques détaillées des clubs de football avec des visualisations interactives de leurs performances.</p>
                     <div class="d-grid gap-2">
-                        <a href="/club" class="btn btn-outline-primary">Explorer</a>
+                        <a href="{{ url_for('club.index') }}" class="btn btn-outline-primary">Explorer</a>
                     </div>
                 </div>
             </div>
@@ -43,7 +43,7 @@
                     <h2 class="card-title text-center h5 mb-3">Statistiques de Joueurs</h2>
                     <p class="card-text text-center">Analysez les performances individuelles des joueurs avec des métriques avancées et des cartes de chaleur de positionnement.</p>
                     <div class="d-grid gap-2">
-                        <a href="/player" class="btn btn-outline-success">Explorer</a>
+                        <a href="{{ url_for('player.index') }}" class="btn btn-outline-success">Explorer</a>
                     </div>
                 </div>
             </div>
@@ -60,7 +60,7 @@
                     <h2 class="card-title text-center h5 mb-3">Prédictions IA</h2>
                     <p class="card-text text-center">Utilisez notre modèle d'intelligence artificielle pour prédire les résultats des matchs à venir avec une analyse explicative.</p>
                     <div class="d-grid gap-2">
-                        <a href="/predict" class="btn btn-outline-danger">Explorer</a>
+                        <a href="{{ url_for('predict.predict_match') }}" class="btn btn-outline-danger">Explorer</a>
                     </div>
                 </div>
             </div>
@@ -85,7 +85,7 @@
                                 <div class="flex-grow-1 ms-3">
                                     <h3 class="h6">API-Football</h3>
                                     <p class="text-muted small">Service officiel avec 100 requêtes/jour gratuites et planification intelligente.</p>
-                                    <a href="/api-football" class="btn btn-sm btn-primary">Utiliser API-Football</a>
+                                    <a href="{{ url_for('api_football.index') }}" class="btn btn-sm btn-primary">Utiliser API-Football</a>
                                 </div>
                             </div>
                         </div>
@@ -99,7 +99,7 @@
                                 <div class="flex-grow-1 ms-3">
                                     <h3 class="h6">Import depuis WhoScored</h3>
                                     <p class="text-muted small">Importation des données depuis WhoScored pour des statistiques détaillées.</p>
-                                    <a href="/whoscored" class="btn btn-sm btn-outline-primary">Utiliser WhoScored</a>
+                                    <a href="{{ url_for('whoscored.index') }}" class="btn btn-sm btn-outline-primary">Utiliser WhoScored</a>
                                 </div>
                             </div>
                         </div>
@@ -176,7 +176,7 @@
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-4 text-center">
-                            <img src="/static/img/api-football-logo.png" alt="API-Football Logo" class="img-fluid mb-3" style="max-width: 200px;">
+                            <img src="{{ url_for('static', filename='img/api-football-logo.png') }}" alt="API-Football Logo" class="img-fluid mb-3" style="max-width: 200px;">
                         </div>
                         <div class="col-md-8">
                             <h3 class="h5">Intégration complète avec API-Football</h3>
@@ -188,7 +188,7 @@
                                 <li>Plus de 150 ligues et compétitions</li>
                                 <li>Statistiques détaillées des joueurs et des équipes</li>
                             </ul>
-                            <a href="/api-football" class="btn btn-primary">Découvrir l'intégration API-Football</a>
+                            <a href="{{ url_for('api_football.index') }}" class="btn btn-primary">Découvrir l'intégration API-Football</a>
                         </div>
                     </div>
                 </div>

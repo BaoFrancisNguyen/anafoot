@@ -46,9 +46,13 @@ def create_app(config_class=Config):
     app.register_blueprint(api_football_bp, url_prefix='/api-football')
     
     # Initialisation de l'API Football Client
-    from app.services.api_football_client import APIFootballClient
-    api_client = APIFootballClient(app)
-    app.extensions['api_football'] = api_client
+    try:
+        from app.services.api_football_client import APIFootballClient
+        api_client = APIFootballClient(app)
+        app.extensions['api_football'] = api_client
+        app.logger.info('API Football Client initialisé avec succès')
+    except Exception as e:
+        app.logger.error(f'Erreur lors de l\'initialisation de l\'API Football Client: {str(e)}')
     
     # Route principale
     @app.route('/')
