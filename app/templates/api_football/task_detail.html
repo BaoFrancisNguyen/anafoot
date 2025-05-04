@@ -1,0 +1,170 @@
+{# app/templates/api_football/task_detail.html #}
+{% extends 'base.html' %}
+
+{% block title %}API-Football - Détails de la tâche{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Détails de la tâche #{{ task.id }}</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Informations générales</h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Type :</dt>
+                        <dd class="col-sm-8">{{ task.task_type }}</dd>
+                        
+                        <dt class="col-sm-4">Endpoint :</dt>
+                        <dd class="col-sm-8">{{ task.endpoint }}</dd>
+                        
+                        <dt class="col-sm-4">Description :</dt>
+                        <dd class="col-sm-8">{{ task.description }}</dd>
+                        
+                        <dt class="col-sm-4">Statut :</dt>
+                        <dd class="col-sm-8">
+                            {% if task.status == 'PENDING' %}
+                            <span class="badge bg-secondary">En attente</span>
+                            {% elif task.status == 'SCHEDULED' %}
+                            <span class="badge bg-info">Planifiée</span>
+                            {% elif task.status == 'RUNNING' %}
+                            <span class="badge bg-warning">En cours</span>
+                            {% elif task.status == 'COMPLETED' %}
+                            <span class="badge bg-success">Terminée</span>
+                            {% elif task.status == 'ERROR' %}
+                            <span class="badge bg-danger">Erreur</span>
+                            {% elif task.status == 'CANCELLED' %}
+                            <span class="badge bg-secondary">Annulée</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Créée le :</dt>
+                        <dd class="col-sm-8">{{ task.created_at.strftime('%d/%m/%Y %H:%M') }}</dd>
+                        
+                        <dt class="col-sm-4">Exécution planifiée :</dt>
+                        <dd class="col-sm-8">{{ task.execution_time.strftime('%d/%m/%Y %H:%M') if task.execution_time else 'Immédiate' }}</dd>
+                        
+                        <dt class="col-sm-4">Récurrence :</dt>
+                        <dd class="col-sm-8">
+                            {% if task.recurrence %}
+                            <span class="badge bg-primary">{{ task.recurrence }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Unique</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Dernière exécution :</dt>
+                        <dd class="col-sm-8">{{ task.last_run.strftime('%d/%m/%Y %H:%M') if task.last_run else '-' }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Paramètres</h2>
+                </div>
+                <div class="card-body">
+                    {% if parameters %}
+                    <div class="mb-3">
+                        <pre class="bg-light p-3 rounded"><code id="parameters-code">{{ parameters|tojson(indent=2) }}</code></pre>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('parameters-code')">
+                        <i class="bi bi-clipboard me-2"></i>Copier
+                    </button>
+                    {% else %}
+                    <div class="alert alert-light">
+                        <p class="mb-0">Aucun paramètre spécifié.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Résultat</h2>
+                </div>
+                <div class="card-body">
+                    {% if result %}
+                    <div class="mb-3">
+                        <pre class="bg-light p-3 rounded"><code id="result-code">{{ result|tojson(indent=2) }}</code></pre>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('result-code')">
+                        <i class="bi bi-clipboard me-2"></i>Copier
+                    </button>
+                    {% else %}
+                    <div class="alert alert-light">
+                        <p class="mb-0">Aucun résultat disponible.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Actions</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if task.status in ['PENDING', 'SCHEDULED'] %}
+                        <form action="{{ url_for('api_football.execute_task', task_id=task.id) }}" method="POST">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-play-fill me-2"></i>Exécuter maintenant
+                            </button>
+                        </form>
+                        <form action="{{ url_for('api_football.cancel_task', task_id=task.id) }}" method="POST">
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-circle me-2"></i>Annuler la tâche
+                            </button>
+                        </form>
+                        {% elif task.status == 'COMPLETED' %}
+                        <form action="{{ url_for('api_football.create_task') }}" method="GET">
+                            <input type="hidden" name="clone" value="{{ task.id }}">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-copy me-2"></i>Cloner cette tâche
+                            </button>
+                        </form>
+                        {% elif task.status == 'ERROR' %}
+                        <form action="{{ url_for('api_football.execute_task', task_id=task.id) }}" method="POST">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-arrow-repeat me-2"></i>Réessayer
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('api_football.tasks') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+        </a>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const text = element.textContent;
+    
+    // Créer un élément temporaire pour copier le texte
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    // Afficher un message de confirmation
+    alert('Copié dans le presse-papiers !');
+}
+</script>
+{% endblock %}
+{% endblock %}

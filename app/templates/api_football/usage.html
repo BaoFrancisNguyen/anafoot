@@ -1,0 +1,273 @@
+{# app/templates/api_football/usage.html #}
+{% extends 'base.html' %}
+
+{% block title %}API-Football - Historique d'utilisation{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Historique d'utilisation API-Football</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Utilisation quotidienne</h2>
+        </div>
+        <div class="card-body">
+            <canvas id="usageChart" height="300"></canvas>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Utilisation par endpoint</h2>
+                </div>
+                <div class="card-body">
+                    <canvas id="endpointChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Statistiques d'utilisation</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th>Utilisation totale (30 jours)</th>
+                                    <td>{{ daily_usage|sum(attribute='used') }} requêtes</td>
+                                </tr>
+                                <tr>
+                                    <th>Moyenne quotidienne</th>
+                                    <td>{{ (daily_usage|sum(attribute='used') / daily_usage|length)|round(1) if daily_usage|length > 0 else 0 }} requêtes</td>
+                                </tr>
+                                <tr>
+                                    <th>Jour avec le plus d'utilisation</th>
+                                    <td>
+                                        {% if daily_usage|length > 0 %}
+                                            {% set max_day = daily_usage|max(attribute='used') %}
+                                            {{ max_day.date.strftime('%d/%m/%Y') }} ({{ max_day.used }} requêtes)
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Endpoint le plus utilisé</th>
+                                    <td>
+                                        {% if endpoint_usage and endpoint_usage|length > 0 %}
+                                            {% set max_endpoint = endpoint_usage|max(attribute='count') %}
+                                            {{ max_endpoint.endpoint }} ({{ max_endpoint.count }} requêtes)
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Quota journalier restant aujourd'hui</th>
+                                    <td>
+                                        {% if daily_usage|length > 0 %}
+                                            {% set today_usage = None %}
+                                            {% for usage in daily_usage %}
+                                                {% if usage.date.strftime('%Y-%m-%d') == today.strftime('%Y-%m-%d') %}
+                                                    {% set today_usage = usage %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            {% if today_usage %}
+                                                {{ today_usage.limit - today_usage.used }} / {{ today_usage.limit }} requêtes
+                                            {% else %}
+                                                100 / 100 requêtes
+                                            {% endif %}
+                                        {% else %}
+                                            100 / 100 requêtes
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Détail par jour</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Requêtes utilisées</th>
+                            <th>Quota journalier</th>
+                            <th>Utilisation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in daily_usage|sort(attribute='date', reverse=true) %}
+                        <tr>
+                            <td>{{ entry.date.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ entry.used }}</td>
+                            <td>{{ entry.limit }}</td>
+                            <td>
+                                <div class="progress" style="height: 15px;">
+                                    <div class="progress-bar {{ 'bg-danger' if entry.used / entry.limit > 0.9 else 'bg-primary' }}" 
+                                         role="progressbar" 
+                                         style="width: {{ (entry.used / entry.limit * 100)|round }}%;" 
+                                         aria-valuenow="{{ entry.used }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="{{ entry.limit }}">
+                                        {{ (entry.used / entry.limit * 100)|round }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('api_football.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à l'accueil
+        </a>
+        <a href="{{ url_for('api_football.settings') }}" class="btn btn-primary">
+            <i class="bi bi-gear me-2"></i>Paramètres
+        </a>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Graphique d'utilisation quotidienne
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    
+    const dates = [
+        {% for entry in daily_usage|sort(attribute='date') %}
+        "{{ entry.date.strftime('%d/%m') }}",
+        {% endfor %}
+    ];
+    
+    const usedRequests = [
+        {% for entry in daily_usage|sort(attribute='date') %}
+        {{ entry.used }},
+        {% endfor %}
+    ];
+    
+    const quotaLimits = [
+        {% for entry in daily_usage|sort(attribute='date') %}
+        {{ entry.limit }},
+        {% endfor %}
+    ];
+    
+    new Chart(usageCtx, {
+        type: 'bar',
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Requêtes utilisées',
+                    data: usedRequests,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Limite quotidienne',
+                    data: quotaLimits,
+                    type: 'line',
+                    fill: false,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: 110
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Utilisation sur les 30 derniers jours'
+                }
+            }
+        }
+    });
+    
+    // Graphique d'utilisation par endpoint
+    const endpointCtx = document.getElementById('endpointChart').getContext('2d');
+    
+    const endpoints = [
+        {% for entry in endpoint_usage %}
+        "{{ entry.endpoint }}",
+        {% endfor %}
+    ];
+    
+    const endpointCounts = [
+        {% for entry in endpoint_usage %}
+        {{ entry.count }},
+        {% endfor %}
+    ];
+    
+    new Chart(endpointCtx, {
+        type: 'pie',
+        data: {
+            labels: endpoints,
+            datasets: [{
+                data: endpointCounts,
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(199, 199, 199, 0.7)',
+                    'rgba(83, 102, 255, 0.7)',
+                    'rgba(40, 159, 64, 0.7)',
+                    'rgba(210, 30, 20, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(199, 199, 199, 1)',
+                    'rgba(83, 102, 255, 1)',
+                    'rgba(40, 159, 64, 1)',
+                    'rgba(210, 30, 20, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Répartition par endpoint'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,4 +1,4 @@
-# app/__init__.py
+# app/__init__.py (mise à jour)
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -37,11 +37,18 @@ def create_app(config_class=Config):
     from app.routes.player_routes import player_bp
     from app.routes.prediction_routes import prediction_bp
     from app.routes.whoscored_routes import whoscored_bp
+    from app.routes.api_football_routes import api_football_bp
     
     app.register_blueprint(club_bp, url_prefix='/club')
     app.register_blueprint(player_bp, url_prefix='/player')
     app.register_blueprint(prediction_bp, url_prefix='/predict')
     app.register_blueprint(whoscored_bp, url_prefix='/whoscored')
+    app.register_blueprint(api_football_bp, url_prefix='/api-football')
+    
+    # Initialisation de l'API Football Client
+    from app.services.api_football_client import APIFootballClient
+    api_client = APIFootballClient(app)
+    app.extensions['api_football'] = api_client
     
     # Route principale
     @app.route('/')
@@ -52,3 +59,6 @@ def create_app(config_class=Config):
 
 # Import des modèles pour que Flask-Migrate les détecte
 from app.models import club, player, match, player_stats, match_event, player_performance, player_position_heatmap, prediction
+from app.models.scheduled_task import ScheduledTask
+from app.models.api_request_log import APIRequestLog
+from app.models.api_quota import APIQuota

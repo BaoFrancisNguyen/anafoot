@@ -1,0 +1,187 @@
+{# app/templates/api_football/settings.html #}
+{% extends 'base.html' %}
+
+{% block title %}API-Football - Paramètres{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Paramètres API-Football</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Configuration de l'API</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('api_football.settings') }}">
+                <div class="mb-3">
+                    <label for="api_key" class="form-label">Clé API</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="api_key" name="api_key" value="{{ api_key }}" required>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">Clé d'accès pour l'API Football. Vous pouvez l'obtenir sur api-sports.io</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="daily_limit" class="form-label">Limite quotidienne</label>
+                    <input type="number" class="form-control" id="daily_limit" name="daily_limit" value="{{ daily_limit }}" min="1" max="1000" required>
+                    <div class="form-text">Nombre de requêtes disponibles par jour avec votre abonnement (100 pour le plan gratuit)</div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="optimize_usage" name="optimize_usage" checked>
+                        <label class="form-check-label" for="optimize_usage">
+                            Optimiser l'utilisation du quota
+                        </label>
+                    </div>
+                    <div class="form-text">Lorsque cette option est activée, le système répartit intelligemment les requêtes tout au long de la journée</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="max_concurrent_tasks" class="form-label">Tâches simultanées maximales</label>
+                    <input type="number" class="form-control" id="max_concurrent_tasks" name="max_concurrent_tasks" value="3" min="1" max="10" required>
+                    <div class="form-text">Nombre maximum de tâches pouvant s'exécuter en même temps</div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Enregistrer les paramètres
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Test de l'API</h2>
+        </div>
+        <div class="card-body">
+            <p>Effectuez un test pour vérifier que votre clé API fonctionne correctement.</p>
+            <form id="testApiForm">
+                <div class="mb-3">
+                    <label for="test_endpoint" class="form-label">Endpoint à tester</label>
+                    <select class="form-select" id="test_endpoint" name="test_endpoint">
+                        <option value="status">Status (vérifie les limites actuelles)</option>
+                        <option value="leagues">Leagues (liste des compétitions)</option>
+                        <option value="teams">Teams (liste des équipes)</option>
+                        <option value="players">Players (liste des joueurs)</option>
+                    </select>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-outline-primary" id="testButton">
+                        <i class="bi bi-lightning me-2"></i>Tester l'API
+                    </button>
+                </div>
+            </form>
+            
+            <div id="testResult" class="mt-3" style="display: none;">
+                <div class="alert" role="alert" id="testAlert">
+                    <h4 class="alert-heading" id="testTitle">Résultat du test</h4>
+                    <p id="testMessage"></p>
+                </div>
+                
+                <div id="testResponseContainer" style="display: none;">
+                    <label class="form-label">Réponse API</label>
+                    <pre class="bg-light p-3 rounded"><code id="testResponse"></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('api_football.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à l'accueil
+        </a>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Afficher/masquer la clé API
+    const togglePassword = document.getElementById('togglePassword');
+    const apiKey = document.getElementById('api_key');
+    
+    togglePassword.addEventListener('click', function () {
+        const type = apiKey.getAttribute('type') === 'password' ? 'text' : 'password';
+        apiKey.setAttribute('type', type);
+        
+        // Changer l'icône
+        this.querySelector('i').classList.toggle('bi-eye');
+        this.querySelector('i').classList.toggle('bi-eye-slash');
+    });
+    
+    // Test de l'API
+    const testApiForm = document.getElementById('testApiForm');
+    const testButton = document.getElementById('testButton');
+    const testResult = document.getElementById('testResult');
+    const testAlert = document.getElementById('testAlert');
+    const testTitle = document.getElementById('testTitle');
+    const testMessage = document.getElementById('testMessage');
+    const testResponseContainer = document.getElementById('testResponseContainer');
+    const testResponse = document.getElementById('testResponse');
+    
+    testApiForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Afficher l'état de chargement
+        testButton.disabled = true;
+        testButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Test en cours...';
+        
+        // Masquer le résultat précédent
+        testResult.style.display = 'none';
+        
+        // Effectuer la requête AJAX pour tester l'API
+        const endpoint = document.getElementById('test_endpoint').value;
+        
+        fetch('/api-football/test-api?endpoint=' + endpoint)
+            .then(response => response.json())
+            .then(data => {
+                // Réinitialiser le bouton
+                testButton.disabled = false;
+                testButton.innerHTML = '<i class="bi bi-lightning me-2"></i>Tester l\'API';
+                
+                // Afficher le résultat
+                testResult.style.display = 'block';
+                
+                if (data.success) {
+                    testAlert.className = 'alert alert-success';
+                    testTitle.textContent = 'Test réussi!';
+                    testMessage.textContent = data.message;
+                    
+                    // Afficher la réponse
+                    if (data.response) {
+                        testResponseContainer.style.display = 'block';
+                        testResponse.textContent = JSON.stringify(data.response, null, 2);
+                    } else {
+                        testResponseContainer.style.display = 'none';
+                    }
+                } else {
+                    testAlert.className = 'alert alert-danger';
+                    testTitle.textContent = 'Échec du test';
+                    testMessage.textContent = data.message;
+                    testResponseContainer.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                // Réinitialiser le bouton
+                testButton.disabled = false;
+                testButton.innerHTML = '<i class="bi bi-lightning me-2"></i>Tester l\'API';
+                
+                // Afficher l'erreur
+                testResult.style.display = 'block';
+                testAlert.className = 'alert alert-danger';
+                testTitle.textContent = 'Erreur';
+                testMessage.textContent = 'Une erreur est survenue lors du test: ' + error.message;
+                testResponseContainer.style.display = 'none';
+            });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
