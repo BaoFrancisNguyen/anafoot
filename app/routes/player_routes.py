@@ -30,11 +30,45 @@ def search():
 @player_bp.route('/<int:player_id>')
 def player_stats(player_id):
     """Affiche les statistiques d'un joueur"""
-    player_info = get_player_stats(player_id)
+    # Récupérer directement le joueur depuis la base de données
+    player = Player.query.get_or_404(player_id)
     
-    if not player_info:
-        flash('Joueur non trouvé', 'danger')
-        return redirect(url_for('player.index'))
+    # Créer un dictionnaire avec les informations de base et des statistiques fictives
+    player_info = {
+        "id": player.id,
+        "name": player.name,
+        "position": player.position,
+        "api_id": player.api_id,
+        "photo_url": player.photo_url,
+        "nationality": player.nationality,
+        "date_of_birth": player.date_of_birth,
+        "current_club": player.club,
+        "stats": {
+            "matches_played": 0, 
+            "minutes_played": 0,
+            "goals": 0,
+            "assists": 0,
+            "yellow_cards": 0,
+            "red_cards": 0
+            # Autres statistiques
+        }
+    }
+    
+    # Essayer d'obtenir les statistiques réelles si disponibles
+    try:
+        stats = player.get_current_season_stats()
+        if stats and not isinstance(stats, dict):
+            # Convertir l'objet stats en dictionnaire si c'est un objet
+            stats_dict = {}
+            for attr in dir(stats):
+                if not attr.startswith('_') and not callable(getattr(stats, attr)):
+                    stats_dict[attr] = getattr(stats, attr)
+            player_info["stats"] = stats_dict
+        elif stats and isinstance(stats, dict):
+            player_info["stats"] = stats
+    except Exception as e:
+        print(f"Erreur lors de la récupération des statistiques: {str(e)}")
+        flash("Impossible de récupérer toutes les statistiques.", "warning")
     
     return render_template('player/stats.html', player=player_info)
 

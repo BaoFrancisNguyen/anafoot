@@ -1,0 +1,399 @@
+{# app/templates/player/stats.html #}
+{% extends 'base.html' %}
+
+{% block title %}Statistiques de {{ player.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        {% if player.photo_url %}
+                        <img src="{{ player.photo_url }}" alt="{{ player.name }}" class="rounded me-4" style="width: 120px; height: 150px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center me-4" style="width: 120px; height: 150px;">
+                            <i class="bi bi-person-fill" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                        
+                        <div>
+                            <h1 class="h2 mb-2">{{ player.name }}</h1>
+                            <p class="mb-1"><strong>Position:</strong> {{ player.position }}</p>
+                            {% if player.nationality %}
+                            <p class="mb-1"><strong>Nationalité:</strong> {{ player.nationality }}</p>
+                            {% endif %}
+                            {% if player.date_of_birth %}
+                            <p class="mb-1"><strong>Date de naissance:</strong> {{ player.date_of_birth }}</p>
+                            {% endif %}
+                            {% if player.current_club %}
+                            <p class="mb-1"><strong>Club actuel:</strong> {{ player.current_club.name }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <ul class="nav nav-tabs" id="statsTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+                        Général
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="offensive-tab" data-bs-toggle="tab" data-bs-target="#offensive" type="button" role="tab" aria-controls="offensive" aria-selected="false">
+                        Offensive
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="defensive-tab" data-bs-toggle="tab" data-bs-target="#defensive" type="button" role="tab" aria-controls="defensive" aria-selected="false">
+                        Défensive
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="passing-tab" data-bs-toggle="tab" data-bs-target="#passing" type="button" role="tab" aria-controls="passing" aria-selected="false">
+                        Passes
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="discipline-tab" data-bs-toggle="tab" data-bs-target="#discipline" type="button" role="tab" aria-controls="discipline" aria-selected="false">
+                        Discipline
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="statsTabContent">
+                <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+                    <div class="card border-top-0 rounded-0 rounded-bottom">
+                        <div class="card-body">
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                                <div class="col">
+                                    <div class="card h-100 text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Matchs joués</h5>
+                                            <p class="card-text display-4">{{ player.stats.matches_played }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="card h-100 text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Minutes jouées</h5>
+                                            <p class="card-text display-4">{{ player.stats.minutes_played }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="card h-100 text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Buts</h5>
+                                            <p class="card-text display-4">{{ player.stats.goals }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="card h-100 text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Passes décisives</h5>
+                                            <p class="card-text display-4">{{ player.stats.assists }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="offensive" role="tabpanel" aria-labelledby="offensive-tab">
+                    <div class="card border-top-0 rounded-0 rounded-bottom">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Tirs</th>
+                                                <td>{{ player.stats.shots or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Tirs cadrés</th>
+                                                <td>{{ player.stats.shots_on_target or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Précision des tirs</th>
+                                                <td>
+                                                    {% if player.stats.shots and player.stats.shots > 0 %}
+                                                        {{ ((player.stats.shots_on_target or 0) / player.stats.shots * 100) | round(1) }}%
+                                                    {% else %}
+                                                        0%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Buts par match</th>
+                                                <td>
+                                                    {% if player.stats.matches_played and player.stats.matches_played > 0 %}
+                                                        {{ ((player.stats.goals or 0) / player.stats.matches_played) | round(2) }}
+                                                    {% else %}
+                                                        0
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Dribbles réussis</th>
+                                                <td>{{ player.stats.dribbles_won or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="defensive" role="tabpanel" aria-labelledby="defensive-tab">
+                    <div class="card border-top-0 rounded-0 rounded-bottom">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Tacles</th>
+                                                <td>{{ player.stats.tackles or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Interceptions</th>
+                                                <td>{{ player.stats.interceptions or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Dégagements</th>
+                                                <td>{{ player.stats.clearances or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Duels gagnés</th>
+                                                <td>{{ player.stats.duels_won or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="passing" role="tabpanel" aria-labelledby="passing-tab">
+                    <div class="card border-top-0 rounded-0 rounded-bottom">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Passes</th>
+                                                <td>{{ player.stats.passes or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Passes réussies</th>
+                                                <td>{{ player.stats.passes_completed or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Précision des passes</th>
+                                                <td>
+                                                    {% if player.stats.passes and player.stats.passes > 0 %}
+                                                        {{ ((player.stats.passes_completed or 0) / player.stats.passes * 100) | round(1) }}%
+                                                    {% else %}
+                                                        0%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Passes clés</th>
+                                                <td>{{ player.stats.key_passes or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="discipline" role="tabpanel" aria-labelledby="discipline-tab">
+                    <div class="card border-top-0 rounded-0 rounded-bottom">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Cartons jaunes</th>
+                                                <td>{{ player.stats.yellow_cards or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Cartons rouges</th>
+                                                <td>{{ player.stats.red_cards or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Fautes commises</th>
+                                                <td>{{ player.stats.fouls or 0 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Fautes subies</th>
+                                                <td>{{ player.stats.fouls_drawn or 0 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance par match</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Le graphique de performance par match sera affiché ici.</p>
+                    <canvas id="performanceChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('player.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à la liste des joueurs
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Graphique de performance par match
+    const ctxPerformance = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(ctxPerformance, {
+        type: 'bar',
+        data: {
+            labels: ['Match 1', 'Match 2', 'Match 3', 'Match 4', 'Match 5'],
+            datasets: [{
+                label: 'Buts',
+                data: [0, 1, 0, 0, 0],
+                backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Passes décisives',
+                data: [0, 0, 1, 0, 0],
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 3
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Performance sur les 5 derniers matchs'
+                }
+            }
+        }
+    });
+    
+    // Charger les données réelles si disponibles via API
+    fetch('/player/{{ player.id }}/performance')
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Erreur de réseau');
+        })
+        .then(data => {
+            // Mettre à jour les graphiques avec les données réelles si elles existent
+            if (data && data.ratings && data.ratings.length > 0) {
+                updatePerformanceChart(performanceChart, data);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des données:', error);
+            // Ne rien faire - le graphique vide sera affiché
+        });
+});
+
+function updatePerformanceChart(chart, data) {
+    // Mettre à jour les labels avec les matchs réels
+    const labels = data.ratings.map((rating, index) => `Match ${index + 1}`);
+    
+    // Créer des ensembles de données pour les buts, passes décisives, etc.
+    const goalsData = new Array(labels.length).fill(0);
+    const assistsData = new Array(labels.length).fill(0);
+    
+    // Remplir avec les données réelles si disponibles
+    if (data.goals_per_match) {
+        data.goals_per_match.forEach((goals, index) => {
+            if (index < goalsData.length) {
+                goalsData[index] = goals;
+            }
+        });
+    }
+    
+    if (data.assists_per_match) {
+        data.assists_per_match.forEach((assists, index) => {
+            if (index < assistsData.length) {
+                assistsData[index] = assists;
+            }
+        });
+    }
+    
+    // Mettre à jour le graphique
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = goalsData;
+    chart.data.datasets[1].data = assistsData;
+    chart.update();
+}
+</script>
+{% endblock %}

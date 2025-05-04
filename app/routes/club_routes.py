@@ -28,23 +28,91 @@ def search():
         clubs = []
     return render_template('club/search.html', clubs=clubs, query=query)
 
+# Version modifiée de la fonction club_stats
 @club_bp.route('/<int:club_id>')
 def club_stats(club_id):
     """Affiche les statistiques d'un club"""
-    club_info = get_club_stats(club_id)
+    # Récupérer le club directement depuis la base de données
+    club = Club.query.get_or_404(club_id)
     
-    if not club_info:
-        flash('Club non trouvé', 'danger')
-        return redirect(url_for('club.index'))
+    # Créer un objet avec les informations de base du club
+    club_info = {
+        "id": club.id,
+        "name": club.name,
+        "short_name": club.short_name,
+        "tla": club.tla,
+        "crest": club.crest,
+        "venue": club.venue,
+        "founded": club.founded,
+        "website": club.website,
+        # Ajouter des données fictives pour les statistiques
+        "recent_form": [],
+        "win_count": 0,
+        "draw_count": 0,
+        "loss_count": 0,
+        "goals_scored": 0,
+        "goals_conceded": 0,
+        "goal_difference": 0,
+        "upcoming_matches": [],
+        # Plus d'attributs si nécessaire
+    }
+    
+    # Essayer d'obtenir les statistiques réelles, si disponibles
+    try:
+        api_stats = get_club_stats(club_id)
+        if api_stats:
+            # Mettre à jour avec les données réelles
+            club_info.update(api_stats)
+    except Exception as e:
+        # En cas d'erreur, logger et continuer avec les données de base
+        print(f"Erreur lors de la récupération des statistiques: {str(e)}")
+        flash(f"Impossible de récupérer toutes les statistiques. Affichage des informations de base uniquement.", "warning")
     
     return render_template('club/stats.html', club=club_info)
+    
 
 @club_bp.route('/<int:club_id>/performance')
 def club_performance(club_id):
     """Renvoie les données de performance d'un club au format JSON pour les graphiques"""
-    matches = get_club_matches(club_id)
-    performance_data = process_club_performance(matches)
-    return jsonify(performance_data)
+    try:
+        # Essayer d'abord d'obtenir les matches via l'API
+        matches = get_club_matches(club_id)
+        if matches:
+            performance_data = process_club_performance(matches)
+            return jsonify(performance_data)
+        
+        # Si aucun match n'est disponible via l'API, essayez la base de données
+        club = Club.query.get_or_404(club_id)
+        db_matches = club.get_all_matches()
+        if db_matches:
+            performance_data = process_club_performance(db_matches)
+            return jsonify(performance_data)
+        
+        # Si toujours aucun match, retournez des données fictives
+        return jsonify({
+            "totalMatches": 0,
+            "results": {"wins": 0, "draws": 0, "losses": 0},
+            "winPercentage": 0,
+            "goalsScored": 0,
+            "goalsConceded": 0,
+            "goalDifference": 0,
+            "averageGoalsScored": 0,
+            "averageGoalsConceded": 0,
+            "timeline": [],
+            "averagePossession": 50,  # données fictives pour le graphique radar
+            "passAccuracy": 75,
+            "duelsWonPercentage": 50,
+            "tacklesPerMatch": 15
+        })
+    except Exception as e:
+        # En cas d'erreur, renvoyer des données de base
+        print(f"Erreur lors de la récupération des données de performance: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "totalMatches": 0,
+            "results": {"wins": 0, "draws": 0, "losses": 0},
+            "timeline": []
+        })
 
 @club_bp.route('/<int:club_id>/matches')
 def club_matches(club_id):

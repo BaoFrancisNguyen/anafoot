@@ -255,32 +255,77 @@ def data_import():
         endpoint = None
         params = {}
         
+        # DÉBUT DES MODIFICATIONS - Règles pour chaque type d'importation
         if import_type == 'teams':
             endpoint = 'teams'
-            if league_id:
-                params['league'] = league_id
+            # Pour les équipes, une ligue est nécessaire
+            if not league_id:
+                flash('Pour importer des équipes, veuillez sélectionner une ligue', 'danger')
+                return redirect(url_for('api_football.data_import'))
+            
+            params['league'] = league_id
             if season:
                 params['season'] = season
+                
         elif import_type == 'players':
             endpoint = 'players'
+            
+            # CORRECTION : L'API exige un ID d'équipe ou de ligue avec le paramètre season
+            if not team_id and not league_id:
+                flash('Pour importer des joueurs, l\'ID de l\'équipe ou de la ligue est obligatoire', 'danger')
+                return redirect(url_for('api_football.data_import'))
+            
+            # Ajouter les paramètres
             if team_id:
                 params['team'] = team_id
+            elif league_id:
+                params['league'] = league_id
+                
             if season:
                 params['season'] = season
+                
         elif import_type == 'fixtures':
             endpoint = 'fixtures'
+            
+            # Pour les matchs, au moins un paramètre est nécessaire
+            if not league_id and not team_id:
+                flash('Pour importer des matchs, veuillez spécifier une ligue ou une équipe', 'danger')
+                return redirect(url_for('api_football.data_import'))
+                
             if league_id:
                 params['league'] = league_id
             if team_id:
                 params['team'] = team_id
             if season:
                 params['season'] = season
+                
         elif import_type == 'statistics':
-            endpoint = 'players'
-            if league_id:
+            # Pour les statistiques, choisir le bon endpoint
+            if team_id:
+                endpoint = 'teams/statistics'
+                params['team'] = team_id
+                if league_id:
+                    params['league'] = league_id
+                else:
+                    flash('Pour les statistiques d\'équipe, veuillez spécifier une ligue', 'danger')
+                    return redirect(url_for('api_football.data_import'))
+            else:
+                endpoint = 'players'
+                if not league_id:
+                    flash('Pour les statistiques de joueurs, veuillez spécifier une ligue', 'danger')
+                    return redirect(url_for('api_football.data_import'))
                 params['league'] = league_id
-            if season:
-                params['season'] = season
+            
+            # La saison est obligatoire pour les statistiques
+            if not season:
+                flash('La saison est obligatoire pour les statistiques', 'danger')
+                return redirect(url_for('api_football.data_import'))
+            
+            params['season'] = season
+        else:
+            flash('Type d\'importation non valide', 'danger')
+            return redirect(url_for('api_football.data_import'))
+        # FIN DES MODIFICATIONS
         
         # Options de planification
         execution_time = None

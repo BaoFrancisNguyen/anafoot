@@ -12,9 +12,9 @@
             <h2 class="h5 mb-0">Formulaire d'importation</h2>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('api_football.data_import') }}">
+            <form method="POST" action="{{ url_for('api_football.data_import') }}" id="importForm">
                 <div class="mb-3">
-                    <label for="import_type" class="form-label">Type de données</label>
+                    <label for="import_type" class="form-label">Type de données <span class="text-danger">*</span></label>
                     <select class="form-select" id="import_type" name="import_type" required>
                         <option value="">Sélectionner un type</option>
                         <option value="teams">Équipes</option>
@@ -22,34 +22,42 @@
                         <option value="fixtures">Matchs</option>
                         <option value="statistics">Statistiques</option>
                     </select>
+                    <div class="form-text">Le type de données à importer détermine les paramètres requis.</div>
                 </div>
                 
                 <div id="league_container" class="mb-3">
                     <label for="league_id" class="form-label">Ligue</label>
                     <select class="form-select" id="league_id" name="league_id">
-                        <option value="">Sélectionner une ligue (optionnel)</option>
+                        <option value="">Sélectionner une ligue</option>
                         {% for league in leagues %}
-                        <option value="{{ league.id }}">{{ league.name }} ({{ league.country }})</option>
+                        <option value="{{ league.id }}">{{ league.name }} ({{ league.country }}) - ID: {{ league.id }}</option>
                         {% endfor %}
                     </select>
+                    <div class="form-text league-help-text">Sélectionnez une ligue pour filtrer les données.</div>
                 </div>
                 
                 <div id="team_container" class="mb-3" style="display: none;">
-                    <label for="team_id" class="form-label">Équipe</label>
-                    <input type="text" class="form-control" id="team_id" name="team_id" placeholder="ID de l'équipe">
-                    <div class="form-text">Importation des joueurs ou matchs pour une équipe spécifique.</div>
+                    <label for="team_id" class="form-label">ID de l'équipe</label>
+                    <input type="text" class="form-control" id="team_id" name="team_id" placeholder="Exemple: 85 pour PSG">
+                    <div class="form-text team-help-text">ID numérique de l'équipe (utilisez le script search_team.py pour trouver l'ID).</div>
                 </div>
                 
                 <div class="mb-3">
                     <label for="season" class="form-label">Saison</label>
                     <select class="form-select" id="season" name="season">
-                        <option value="">Sélectionner une saison (optionnel)</option>
+                        <option value="">Sélectionner une saison</option>
                         <option value="2024">2024</option>
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
                         <option value="2021">2021</option>
                         <option value="2020">2020</option>
                     </select>
+                    <div class="form-text season-help-text">Année de début de la saison. Par exemple, 2023 pour la saison 2023/2024.</div>
+                </div>
+                
+                <div class="alert alert-info mb-4" id="importRequirements">
+                    <h5 class="alert-heading">Paramètres requis</h5>
+                    <p class="mb-0">Sélectionnez d'abord un type d'importation pour voir les paramètres requis.</p>
                 </div>
                 
                 <div class="mb-3">
@@ -129,12 +137,93 @@
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submitButton">
                         <i class="bi bi-cloud-download me-2"></i>Importer les données
                     </button>
                     <a href="{{ url_for('api_football.index') }}" class="btn btn-secondary">Annuler</a>
                 </div>
             </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Aide à l'importation</h2>
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="importHelp">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTeams">
+                            Importation d'équipes
+                        </button>
+                    </h2>
+                    <div id="collapseTeams" class="accordion-collapse collapse" data-bs-parent="#importHelp">
+                        <div class="accordion-body">
+                            <p>Pour importer des équipes :</p>
+                            <ul>
+                                <li><strong>Requis</strong> : Sélectionnez une ligue</li>
+                                <li><strong>Optionnel</strong> : Sélectionnez une saison pour filtrer les équipes actives cette saison-là</li>
+                            </ul>
+                            <p>Cette opération importera toutes les équipes de la ligue sélectionnée.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePlayers">
+                            Importation de joueurs
+                        </button>
+                    </h2>
+                    <div id="collapsePlayers" class="accordion-collapse collapse" data-bs-parent="#importHelp">
+                        <div class="accordion-body">
+                            <p>Pour importer des joueurs :</p>
+                            <ul>
+                                <li><strong>Requis</strong> : Spécifiez <strong>soit</strong> l'ID d'une équipe <strong>soit</strong> l'ID d'une ligue (ou les deux)</li>
+                                <li><strong>Optionnel</strong> : Sélectionnez une saison</li>
+                            </ul>
+                            <p>Pour trouver l'ID d'une équipe, utilisez le script <code>search_team.py</code> :</p>
+                            <pre class="bg-light p-2"><code>python search_team.py</code></pre>
+                            <p>Puis entrez le nom de l'équipe (ex: "Paris" pour Paris Saint-Germain). L'ID est le premier nombre affiché.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFixtures">
+                            Importation de matchs
+                        </button>
+                    </h2>
+                    <div id="collapseFixtures" class="accordion-collapse collapse" data-bs-parent="#importHelp">
+                        <div class="accordion-body">
+                            <p>Pour importer des matchs :</p>
+                            <ul>
+                                <li><strong>Requis</strong> : Spécifiez <strong>soit</strong> l'ID d'une ligue <strong>soit</strong> l'ID d'une équipe (ou les deux)</li>
+                                <li><strong>Recommandé</strong> : Sélectionnez une saison</li>
+                            </ul>
+                            <p>Les matchs peuvent être filtrés par ligue, équipe et saison. Sans saison, les matchs les plus récents seront importés.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStats">
+                            Importation de statistiques
+                        </button>
+                    </h2>
+                    <div id="collapseStats" class="accordion-collapse collapse" data-bs-parent="#importHelp">
+                        <div class="accordion-body">
+                            <p>Pour importer des statistiques :</p>
+                            <ul>
+                                <li><strong>Requis</strong> : Sélectionnez une saison</li>
+                                <li><strong>Requis</strong> : Sélectionnez une ligue</li>
+                                <li><strong>Optionnel</strong> : Spécifiez l'ID d'une équipe pour des statistiques spécifiques à une équipe</li>
+                            </ul>
+                            <p>Si vous spécifiez une équipe, les statistiques de cette équipe dans la ligue sélectionnée seront importées. Sinon, les statistiques de tous les joueurs de la ligue seront importées.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -159,7 +248,13 @@
                                 <h5 class="card-title mb-0">{{ league.name }}</h5>
                             </div>
                             <p class="card-text">{{ league.country }}</p>
-                            <p class="card-text">ID: {{ league.id }}</p>
+                            <p class="card-text"><strong>ID:</strong> {{ league.id }}</p>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary select-league" data-league-id="{{ league.id }}">
+                                    Sélectionner cette ligue
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -172,6 +267,21 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Éléments du formulaire
+    const importType = document.getElementById('import_type');
+    const teamContainer = document.getElementById('team_container');
+    const teamIdInput = document.getElementById('team_id');
+    const leagueContainer = document.getElementById('league_container');
+    const leagueIdSelect = document.getElementById('league_id');
+    const seasonSelect = document.getElementById('season');
+    const submitButton = document.getElementById('submitButton');
+    const importRequirements = document.getElementById('importRequirements');
+    
+    // Boîtes d'aide
+    const leagueHelpText = document.querySelector('.league-help-text');
+    const teamHelpText = document.querySelector('.team-help-text');
+    const seasonHelpText = document.querySelector('.season-help-text');
+    
     // Gestion des options de planification
     const scheduleNow = document.getElementById('schedule_now');
     const scheduleOnce = document.getElementById('schedule_once');
@@ -179,6 +289,167 @@ document.addEventListener('DOMContentLoaded', function() {
     const onceOptions = document.getElementById('once_options');
     const recurringOptions = document.getElementById('recurring_options');
     
+    // Boutons de sélection de ligue
+    const selectLeagueButtons = document.querySelectorAll('.select-league');
+    
+    // Fonction pour mettre à jour les exigences d'importation
+    function updateImportRequirements() {
+        const type = importType.value;
+        let requirements = '';
+        
+        if (type === 'teams') {
+            requirements = `
+                <h5 class="alert-heading">Importation d'équipes</h5>
+                <p class="mb-0"><strong>Requis</strong>: Une ligue doit être sélectionnée.</p>
+                <p class="mb-0"><strong>Recommandé</strong>: Sélectionnez une saison pour filtrer les équipes actives.</p>
+            `;
+            // Mettre à jour les étiquettes et exigences
+            document.querySelector('label[for="league_id"]').innerHTML = 'Ligue <span class="text-danger">*</span>';
+            leagueIdSelect.setAttribute('required', 'required');
+            leagueHelpText.innerHTML = '<strong>Obligatoire</strong> - Sélectionnez la ligue dont vous souhaitez importer les équipes.';
+            
+            teamContainer.style.display = 'none';
+            teamIdInput.removeAttribute('required');
+            
+            document.querySelector('label[for="season"]').innerHTML = 'Saison';
+            seasonSelect.removeAttribute('required');
+            seasonHelpText.innerHTML = 'Année de début de la saison (optionnel).';
+            
+        } else if (type === 'players') {
+            requirements = `
+                <h5 class="alert-heading">Importation de joueurs</h5>
+                <p class="mb-0"><strong>Requis</strong>: Soit une équipe, soit une ligue (ou les deux) doit être spécifiée.</p>
+                <p class="mb-0"><strong>Recommandé</strong>: Spécifiez une saison pour des données plus précises.</p>
+            `;
+            // Mettre à jour les étiquettes et exigences
+            document.querySelector('label[for="league_id"]').innerHTML = 'Ligue';
+            leagueIdSelect.removeAttribute('required');
+            leagueHelpText.innerHTML = 'Si spécifiée, tous les joueurs de cette ligue seront importés.';
+            
+            teamContainer.style.display = 'block';
+            document.querySelector('label[for="team_id"]').innerHTML = 'ID de l\'équipe';
+            teamIdInput.removeAttribute('required');
+            teamHelpText.innerHTML = 'Si spécifié, les joueurs de cette équipe seront importés.';
+            
+            document.querySelector('label[for="season"]').innerHTML = 'Saison';
+            seasonSelect.removeAttribute('required');
+            seasonHelpText.innerHTML = 'Saison pour laquelle importer les statistiques des joueurs.';
+            
+        } else if (type === 'fixtures') {
+            requirements = `
+                <h5 class="alert-heading">Importation de matchs</h5>
+                <p class="mb-0"><strong>Requis</strong>: Soit une équipe, soit une ligue (ou les deux) doit être spécifiée.</p>
+                <p class="mb-0"><strong>Recommandé</strong>: Spécifiez une saison pour limiter les résultats.</p>
+            `;
+            // Mettre à jour les étiquettes et exigences
+            document.querySelector('label[for="league_id"]').innerHTML = 'Ligue';
+            leagueIdSelect.removeAttribute('required');
+            leagueHelpText.innerHTML = 'Si spécifiée, tous les matchs de cette ligue seront importés.';
+            
+            teamContainer.style.display = 'block';
+            document.querySelector('label[for="team_id"]').innerHTML = 'ID de l\'équipe';
+            teamIdInput.removeAttribute('required');
+            teamHelpText.innerHTML = 'Si spécifié, les matchs de cette équipe seront importés.';
+            
+            document.querySelector('label[for="season"]').innerHTML = 'Saison';
+            seasonSelect.removeAttribute('required');
+            seasonHelpText.innerHTML = 'Saison pour laquelle importer les matchs.';
+            
+        } else if (type === 'statistics') {
+            requirements = `
+                <h5 class="alert-heading">Importation de statistiques</h5>
+                <p class="mb-0"><strong>Requis</strong>: Une ligue et une saison doivent être spécifiées.</p>
+                <p class="mb-0"><strong>Optionnel</strong>: Spécifiez une équipe pour des statistiques d'équipe spécifiques.</p>
+            `;
+            // Mettre à jour les étiquettes et exigences
+            document.querySelector('label[for="league_id"]').innerHTML = 'Ligue <span class="text-danger">*</span>';
+            leagueIdSelect.setAttribute('required', 'required');
+            leagueHelpText.innerHTML = '<strong>Obligatoire</strong> - Ligue pour laquelle importer les statistiques.';
+            
+            teamContainer.style.display = 'block';
+            document.querySelector('label[for="team_id"]').innerHTML = 'ID de l\'équipe (optionnel)';
+            teamIdInput.removeAttribute('required');
+            teamHelpText.innerHTML = 'Si spécifié, les statistiques de cette équipe seront importées, sinon celles de tous les joueurs de la ligue.';
+            
+            document.querySelector('label[for="season"]').innerHTML = 'Saison <span class="text-danger">*</span>';
+            seasonSelect.setAttribute('required', 'required');
+            seasonHelpText.innerHTML = '<strong>Obligatoire</strong> - Saison pour laquelle importer les statistiques.';
+            
+        } else {
+            requirements = `
+                <h5 class="alert-heading">Paramètres requis</h5>
+                <p class="mb-0">Sélectionnez d'abord un type d'importation pour voir les paramètres requis.</p>
+            `;
+            
+            // Réinitialiser les étiquettes et exigences
+            document.querySelector('label[for="league_id"]').innerHTML = 'Ligue';
+            leagueIdSelect.removeAttribute('required');
+            leagueHelpText.innerHTML = 'Sélectionnez une ligue pour filtrer les données.';
+            
+            teamContainer.style.display = 'none';
+            teamIdInput.removeAttribute('required');
+            
+            document.querySelector('label[for="season"]').innerHTML = 'Saison';
+            seasonSelect.removeAttribute('required');
+            seasonHelpText.innerHTML = 'Année de début de la saison.';
+        }
+        
+        importRequirements.innerHTML = requirements;
+    }
+    
+    // Fonction pour valider le formulaire avant soumission
+    function validateForm(e) {
+        const type = importType.value;
+        let isValid = true;
+        let errorMessage = '';
+        
+        if (type === 'teams') {
+            // Équipes: Ligue obligatoire
+            if (!leagueIdSelect.value) {
+                errorMessage = 'Pour importer des équipes, veuillez sélectionner une ligue.';
+                isValid = false;
+            }
+        } else if (type === 'players') {
+            // Joueurs: Équipe OU ligue obligatoire
+            if (!teamIdInput.value && !leagueIdSelect.value) {
+                errorMessage = 'Pour importer des joueurs, veuillez spécifier soit une équipe, soit une ligue.';
+                isValid = false;
+            }
+        } else if (type === 'fixtures') {
+            // Matchs: Équipe OU ligue obligatoire
+            if (!teamIdInput.value && !leagueIdSelect.value) {
+                errorMessage = 'Pour importer des matchs, veuillez spécifier soit une équipe, soit une ligue.';
+                isValid = false;
+            }
+        } else if (type === 'statistics') {
+            // Statistiques: Ligue ET saison obligatoires
+            if (!leagueIdSelect.value) {
+                errorMessage = 'Pour importer des statistiques, veuillez sélectionner une ligue.';
+                isValid = false;
+            } else if (!seasonSelect.value) {
+                errorMessage = 'Pour importer des statistiques, veuillez sélectionner une saison.';
+                isValid = false;
+            }
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert(errorMessage);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Ajouter écouteurs d'événements
+    
+    // Mettre à jour les exigences lorsque le type d'importation change
+    importType.addEventListener('change', updateImportRequirements);
+    
+    // Valider le formulaire avant soumission
+    document.getElementById('importForm').addEventListener('submit', validateForm);
+    
+    // Gérer les options de planification
     scheduleNow.addEventListener('change', function() {
         if (this.checked) {
             onceOptions.style.display = 'none';
@@ -218,16 +489,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Afficher le champ d'équipe uniquement pour les types d'importation appropriés
-    const importType = document.getElementById('import_type');
-    const teamContainer = document.getElementById('team_container');
-    
-    importType.addEventListener('change', function() {
-        if (this.value === 'players' || this.value === 'fixtures') {
-            teamContainer.style.display = 'block';
-        } else {
-            teamContainer.style.display = 'none';
+    // Si l'utilisateur saisit le nom d'une équipe au lieu de l'ID
+    teamIdInput.addEventListener('blur', function() {
+        // Ne vérifier que si la valeur n'est pas un nombre
+        if (this.value && isNaN(this.value)) {
+            // Afficher un avertissement
+            if (!document.getElementById('team-id-warning')) {
+                const warning = document.createElement('div');
+                warning.id = 'team-id-warning';
+                warning.className = 'alert alert-warning mt-2';
+                warning.innerHTML = '<strong>Attention!</strong> Vous semblez avoir saisi le nom de l\'équipe au lieu de son ID. ' +
+                    'Veuillez utiliser l\'ID numérique de l\'équipe. Utilisez le script search_team.py pour trouver l\'ID correct.';
+                teamContainer.appendChild(warning);
+                
+                // Ajouter un bouton pour fermer l'alerte
+                const closeButton = document.createElement('button');
+                closeButton.type = 'button';
+                closeButton.className = 'btn-close';
+                closeButton.setAttribute('data-bs-dismiss', 'alert');
+                closeButton.setAttribute('aria-label', 'Close');
+                warning.appendChild(closeButton);
+                
+                // Ajouter un gestionnaire pour fermer l'alerte
+                closeButton.addEventListener('click', function() {
+                    warning.remove();
+                });
+            }
+        } else if (document.getElementById('team-id-warning')) {
+            // Supprimer l'avertissement si la valeur est un nombre
+            document.getElementById('team-id-warning').remove();
         }
+    });
+    
+    // Initialiser les exigences basées sur le type par défaut
+    updateImportRequirements();
+    
+    // Gestion des boutons de sélection de ligue
+    selectLeagueButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const leagueId = this.getAttribute('data-league-id');
+            leagueIdSelect.value = leagueId;
+            
+            // Faire défiler vers le haut du formulaire
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+            
+            // Mettre en surbrillance le sélecteur de ligue
+            leagueIdSelect.classList.add('border-success');
+            setTimeout(() => {
+                leagueIdSelect.classList.remove('border-success');
+            }, 2000);
+        });
     });
 });
 </script>
