@@ -696,7 +696,7 @@ class APIFootballClient:
             # Traitement des statistiques d'équipe
             self._process_team_statistics(response)
             return
-            
+                
         # Cas 2: Statistiques de joueurs (endpoint: players)
         from app.models.player_stats import PlayerStats
         from app.models.player import Player
@@ -720,7 +720,7 @@ class APIFootballClient:
                 logger.warning(f"Structure de données inattendue: player {type(player)}, statistics {type(statistics)}")
                 continue
             
-            # Trouver le joueur associé
+            # Rechercher le joueur associé
             db_player = Player.query.filter_by(api_id=player.get('id')).first()
             
             if not db_player:
@@ -774,87 +774,169 @@ class APIFootballClient:
         Args:
             team_stats: Les statistiques d'équipe
         """
-        if not isinstance(team_stats, dict):
-            logger.warning(f"Format de données d'équipe inattendu: {type(team_stats)}")
-            return
+        try:
+            if not isinstance(team_stats, dict):
+                logger.warning(f"Format de données d'équipe inattendu: {type(team_stats)}")
+                return
             
-        # Récupérer les informations de base
-        league = team_stats.get('league', {})
-        team = team_stats.get('team', {})
-        
-        if not isinstance(league, dict) or not isinstance(team, dict):
-            logger.warning(f"Structure de données inattendue: league {type(league)}, team {type(team)}")
-            return
-        
-        season = str(league.get('season', ''))
-        team_id = team.get('id')
-        
-        logger.info(f"Traitement des statistiques de l'équipe {team.get('name')} pour la saison {season}")
-        
-        # Vérifier si l'équipe existe dans la base de données
-        from app.models.club import Club
-        db_team = Club.query.filter_by(api_id=team_id).first()
-        
-        if not db_team:
-            logger.warning(f"Équipe {team_id} non trouvée dans la base de données")
-            # Créer l'équipe
-            db_team = Club(
-                api_id=team_id,
-                name=team.get('name'),
-                short_name=team.get('name')[:3].upper(),
-                crest=team.get('logo')
-            )
-            db.session.add(db_team)
-            db.session.commit()
-            logger.info(f"Équipe {team.get('name')} créée")
-        
-        # Formater la saison
-        if season:
-            try:
-                season_year = int(season)
-                formatted_season = f"{season_year}/{season_year+1}"
-            except ValueError:
+            # Récupérer les informations de base
+            league = team_stats.get('league', {})
+            team = team_stats.get('team', {})
+            
+            if not isinstance(league, dict):
+                logger.warning(f"Format de données league inattendu: {type(league)}")
+                return
+                
+            if not isinstance(team, dict):
+                logger.warning(f"Format de données team inattendu: {type(team)}")
+                return
+            
+            season = str(league.get('season', ''))
+            team_id = team.get('id')
+            
+            if not team_id:
+                logger.warning("ID d'équipe manquant dans les données")
+                return
+                
+            logger.info(f"Traitement des statistiques de l'équipe {team.get('name')} pour la saison {season}")
+            
+            # Vérifier si l'équipe existe dans la base de données
+            from app.models.club import Club
+            from app.models.team_stats import TeamStats
+            from app import db
+            from datetime import datetime
+            
+            with db.session.begin_nested():  # Utiliser une transaction pour pouvoir faire rollback
+                db_team = Club.query.filter_by(api_id=team_id).first()
+                
+                if not db_team:
+                    logger.warning(f"Équipe {team_id} non trouvée dans la base de données")
+                    # Créer l'équipe
+                    db_team = Club(
+                        api_id=team_id,
+                        name=team.get('name'),
+                        short_name=team.get('name')[:3].upper(),
+                        crest=team.get('logo')
+                    )
+                    db.session.add(db_team)
+                    db.session.flush()  # Pour obtenir l'ID sans commit
+                    logger.info(f"Équipe {team.get('name')} créée")
+                
+                # Formater la saison
                 formatted_season = season
-        else:
-            formatted_season = "2023/2024"  # Saison par défaut
+                if season:
+                    try:
+                        season_year = int(season)
+                        formatted_season = f"{season_year}/{season_year+1}"
+                    except ValueError:
+                        formatted_season = season
+                else:
+                    formatted_season = "2023/2024"  # Saison par défaut
+                
+                # Vérifier si les statistiques existent déjà
+                db_stats = TeamStats.query.filter_by(
+                    club_id=db_team.id,
+                    season=formatted_season
+                ).first()
+                
+                if not db_stats:
+                    # Créer un nouvel enregistrement de statistiques
+                    db_stats = TeamStats(
+                        club_id=db_team.id,
+                        season=formatted_season,
+                        matches_played=0,
+                        wins=0,
+                        draws=0,
+                        losses=0,
+                        goals_for=0,
+                        goals_against=0,
+                        clean_sheets=0,
+                        yellow_cards=0,
+                        red_cards=0,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.session.add(db_stats)
+                    logger.info(f"Nouvel enregistrement de statistiques créé pour {team.get('name')}")
+                
+                # Statistiques générales - Matches
+                fixtures = team_stats.get('fixtures', {})
+                if isinstance(fixtures, dict):
+                    played = fixtures.get('played', {})
+                    wins = fixtures.get('wins', {})
+                    draws = fixtures.get('draws', {})
+                    loses = fixtures.get('loses', {})
+                    
+                    if isinstance(played, dict) and 'total' in played:
+                        db_stats.matches_played = played['total'] or 0
+                    
+                    if isinstance(wins, dict) and 'total' in wins:
+                        db_stats.wins = wins['total'] or 0
+                    
+                    if isinstance(draws, dict) and 'total' in draws:
+                        db_stats.draws = draws['total'] or 0
+                    
+                    if isinstance(loses, dict) and 'total' in loses:
+                        db_stats.losses = loses['total'] or 0
+                
+                # Buts
+                goals = team_stats.get('goals', {})
+                if isinstance(goals, dict):
+                    # Buts pour
+                    goals_for = goals.get('for', {})
+                    if isinstance(goals_for, dict) and 'total' in goals_for:
+                        total_for = goals_for['total']
+                        if isinstance(total_for, dict) and 'total' in total_for:
+                            db_stats.goals_for = total_for['total'] or 0
+                    
+                    # Buts contre
+                    goals_against = goals.get('against', {})
+                    if isinstance(goals_against, dict) and 'total' in goals_against:
+                        total_against = goals_against['total']
+                        if isinstance(total_against, dict) and 'total' in total_against:
+                            db_stats.goals_against = total_against['total'] or 0
+                
+                # Clean sheets
+                clean_sheet = team_stats.get('clean_sheet', {})
+                if isinstance(clean_sheet, dict) and 'total' in clean_sheet:
+                    db_stats.clean_sheets = clean_sheet['total'] or 0
+                
+                # Cartes
+                cards = team_stats.get('cards', {})
+                if isinstance(cards, dict):
+                    # Compteur pour les cartes jaunes et rouges
+                    yellow_count = 0
+                    red_count = 0
+                    
+                    # Cartes jaunes
+                    yellow = cards.get('yellow', {})
+                    if isinstance(yellow, dict):
+                        for time_range, data in yellow.items():
+                            if isinstance(data, dict) and 'total' in data and data['total'] is not None:
+                                yellow_count += data['total']
+                    
+                    # Cartes rouges
+                    red = cards.get('red', {})
+                    if isinstance(red, dict):
+                        for time_range, data in red.items():
+                            if isinstance(data, dict) and 'total' in data and data['total'] is not None:
+                                red_count += data['total']
+                    
+                    db_stats.yellow_cards = yellow_count
+                    db_stats.red_cards = red_count
+                
+                # Mise à jour timestamp
+                db_stats.updated_at = datetime.utcnow()
+            
+            # Commit en dehors de la transaction imbriquée
+            db.session.commit()
+            logger.info(f"Statistiques de l'équipe {team.get('name')} mises à jour")
         
-        # Stocker les statistiques d'équipe
-        from app.models.team_stats import TeamStats
-        
-        # Vérifier si les statistiques existent déjà
-        db_stats = TeamStats.query.filter_by(
-            club_id=db_team.id,
-            season=formatted_season
-        ).first()
-        
-        if not db_stats:
-            db_stats = TeamStats(club_id=db_team.id, season=formatted_season)
-            db.session.add(db_stats)
-        
-        # Statistiques générales
-        fixtures = team_stats.get('fixtures', {})
-        if isinstance(fixtures, dict):
-            db_stats.matches_played = fixtures.get('played', {}).get('total', 0) or 0
-            db_stats.wins = fixtures.get('wins', {}).get('total', 0) or 0
-            db_stats.draws = fixtures.get('draws', {}).get('total', 0) or 0
-            db_stats.losses = fixtures.get('loses', {}).get('total', 0) or 0
-        
-        # Buts
-        goals = team_stats.get('goals', {})
-        if isinstance(goals, dict):
-            db_stats.goals_for = goals.get('for', {}).get('total', {}).get('total', 0) or 0
-            db_stats.goals_against = goals.get('against', {}).get('total', {}).get('total', 0) or 0
-        
-        # Statistiques offensives
-        shots = team_stats.get('biggest', {}).get('goals', {}).get('for', 0) or 0
-        
-        # Ajoutez d'autres statistiques selon la structure des données renvoyées
-        
-        # Date de mise à jour
-        db_stats.updated_at = datetime.utcnow()
-        
-        db.session.commit()
-        logger.info(f"Statistiques de l'équipe {team.get('name')} mises à jour")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Erreur lors du traitement des statistiques d'équipe: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     def _update_player_stats_from_api(self, db_stats, api_stats):
         """
@@ -864,108 +946,93 @@ class APIFootballClient:
             db_stats: L'objet PlayerStats à mettre à jour
             api_stats: Les statistiques de l'API
         """
-        # Mise à jour des statistiques de base
-        games = api_stats.get('games', {})
-        if not isinstance(games, dict):
-            logger.warning(f"Format de données de matchs inattendu: {type(games)}")
-            games = {}
+        try:
+            # Mise à jour des statistiques de base
+            games = api_stats.get('games', {})
+            if isinstance(games, dict):
+                db_stats.matches_played = games.get('appearences', 0) or 0
+                db_stats.minutes_played = games.get('minutes', 0) or 0
             
-        db_stats.matches_played = games.get('appearences', 0) or 0
-        db_stats.minutes_played = games.get('minutes', 0) or 0
-        
-        # Buts et passes décisives
-        goals = api_stats.get('goals', {})
-        if not isinstance(goals, dict):
-            logger.warning(f"Format de données de buts inattendu: {type(goals)}")
-            goals = {}
+            # Buts et passes décisives
+            goals = api_stats.get('goals', {})
+            if isinstance(goals, dict):
+                db_stats.goals = goals.get('total', 0) or 0
+                db_stats.assists = goals.get('assists', 0) or 0
             
-        db_stats.goals = goals.get('total', 0) or 0
-        db_stats.assists = goals.get('assists', 0) or 0
-        
-        # Discipline
-        cards = api_stats.get('cards', {})
-        if not isinstance(cards, dict):
-            logger.warning(f"Format de données de cartons inattendu: {type(cards)}")
-            cards = {}
+            # Discipline
+            cards = api_stats.get('cards', {})
+            if isinstance(cards, dict):
+                db_stats.yellow_cards = cards.get('yellow', 0) or 0
+                db_stats.red_cards = cards.get('red', 0) or 0
             
-        db_stats.yellow_cards = cards.get('yellow', 0) or 0
-        db_stats.red_cards = cards.get('red', 0) or 0
-        
-        # Statistiques offensives
-        shots = api_stats.get('shots', {})
-        if not isinstance(shots, dict):
-            logger.warning(f"Format de données de tirs inattendu: {type(shots)}")
-            shots = {}
+            # Statistiques offensives
+            shots = api_stats.get('shots', {})
+            if isinstance(shots, dict):
+                db_stats.shots = shots.get('total', 0) or 0
+                db_stats.shots_on_target = shots.get('on', 0) or 0
             
-        db_stats.shots = shots.get('total', 0) or 0
-        db_stats.shots_on_target = shots.get('on', 0) or 0
-        
-        # Passes
-        passes = api_stats.get('passes', {})
-        if not isinstance(passes, dict):
-            logger.warning(f"Format de données de passes inattendu: {type(passes)}")
-            passes = {}
-            
-        db_stats.passes = passes.get('total', 0) or 0
-        db_stats.key_passes = passes.get('key', 0) or 0
-        
-        accuracy = passes.get('accuracy')
-        if accuracy is not None:
-            try:
-                # Convertir en nombre
-                if isinstance(accuracy, str):
-                    accuracy = accuracy.replace('%', '')
-                accuracy_float = float(accuracy)
-                db_stats.pass_accuracy = accuracy_float
+            # Passes
+            passes = api_stats.get('passes', {})
+            if isinstance(passes, dict):
+                db_stats.passes = passes.get('total', 0) or 0
+                db_stats.key_passes = passes.get('key', 0) or 0
                 
-                # Calculer le nombre de passes réussies
-                total_passes = passes.get('total', 0) or 0
-                if total_passes > 0:
-                    db_stats.passes_completed = int(total_passes * accuracy_float / 100)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Impossible de convertir la précision des passes: {accuracy} - {e}")
-        
-        # Statistiques défensives
-        tackles = api_stats.get('tackles', {})
-        if not isinstance(tackles, dict):
-            logger.warning(f"Format de données de tacles inattendu: {type(tackles)}")
-            tackles = {}
+                accuracy = passes.get('accuracy')
+                if accuracy is not None:
+                    try:
+                        # Convertir en nombre
+                        if isinstance(accuracy, str):
+                            accuracy = accuracy.replace('%', '')
+                        accuracy_float = float(accuracy)
+                        db_stats.pass_accuracy = accuracy_float
+                        
+                        # Calculer le nombre de passes réussies
+                        total_passes = passes.get('total', 0) or 0
+                        if total_passes > 0:
+                            db_stats.passes_completed = int(total_passes * accuracy_float / 100)
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Impossible de convertir la précision des passes: {accuracy} - {e}")
             
-        db_stats.tackles = tackles.get('total', 0) or 0
-        db_stats.tackles_won = tackles.get('blocks', 0) or 0
-        db_stats.interceptions = tackles.get('interceptions', 0) or 0
-        
-        blocks = api_stats.get('blocks', {})
-        if blocks and isinstance(blocks, dict):
-            db_stats.blocks = blocks.get('total', 0) or 0
-        
-        duels = api_stats.get('duels', {})
-        if duels and isinstance(duels, dict):
-            db_stats.duels = duels.get('total', 0) or 0
-            db_stats.duels_won = duels.get('won', 0) or 0
-        
-        # Statistiques pour les gardiens de but
-        position = api_stats.get('position', {})
-        if position and isinstance(position, dict) and position.get('name') == 'Goalkeeper':
+            # Statistiques défensives
+            tackles = api_stats.get('tackles', {})
+            if isinstance(tackles, dict):
+                db_stats.tackles = tackles.get('total', 0) or 0
+                db_stats.tackles_won = tackles.get('blocks', 0) or 0
+                db_stats.interceptions = tackles.get('interceptions', 0) or 0
+            
+            blocks = api_stats.get('blocks', {})
+            if isinstance(blocks, dict):
+                db_stats.blocks = blocks.get('total', 0) or 0
+            
+            duels = api_stats.get('duels', {})
+            if isinstance(duels, dict):
+                db_stats.duels = duels.get('total', 0) or 0
+                db_stats.duels_won = duels.get('won', 0) or 0
+            
+            # Statistiques pour les gardiens de but
             goalkeeper = api_stats.get('goalkeeper', {})
-            if goalkeeper and isinstance(goalkeeper, dict):
+            if isinstance(goalkeeper, dict):
                 db_stats.saves = goalkeeper.get('saves', 0) or 0
                 db_stats.goals_conceded = goalkeeper.get('goals_conceded', 0) or 0
                 db_stats.clean_sheets = goalkeeper.get('cleansheets', 0) or 0
                 db_stats.penalties_saved = goalkeeper.get('penalty_saved', 0) or 0
-        
-        # Statistiques générales
-        rating_value = api_stats.get('rating')
-        if rating_value:
-            try:
-                db_stats.rating = float(rating_value)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Impossible de convertir la note: {rating_value} - {e}")
-        
-        # Date de mise à jour
-        db_stats.updated_at = datetime.utcnow()
-    
-    # Méthodes d'accès à l'API
+            
+            # Note globale
+            rating_value = api_stats.get('rating')
+            if rating_value:
+                try:
+                    db_stats.rating = float(rating_value)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Impossible de convertir la note: {rating_value} - {e}")
+            
+            # Date de mise à jour
+            from datetime import datetime
+            db_stats.updated_at = datetime.utcnow()
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour des statistiques de joueur: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     def get_leagues(self, country=None, season=None, current=None):
         """

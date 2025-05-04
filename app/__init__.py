@@ -66,3 +66,4 @@ from app.models import club, player, match, player_stats, match_event, player_pe
 from app.models.scheduled_task import ScheduledTask
 from app.models.api_request_log import APIRequestLog
 from app.models.api_quota import APIQuota
+from app.models.team_stats import TeamStats
