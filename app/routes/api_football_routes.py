@@ -553,3 +553,361 @@ def test_api():
             'success': False,
             'message': f'Erreur lors du test de l\'API: {str(e)}'
         })
+    
+# Nouvelle route pour récupérer et afficher les classements des ligues
+@api_football_bp.route('/standings/<int:league_id>/<int:season>')
+def view_standings(league_id, season):
+    """Affiche les classements d'une ligue pour une saison donnée"""
+    try:
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les données du classement
+        response = api_client._make_request('standings', {
+            'league': league_id,
+            'season': season
+        })
+        
+        if not response or 'response' not in response or not response['response']:
+            flash('Aucun classement disponible pour cette ligue et cette saison', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        standings_data = response['response'][0]['league']
+        
+        # Récupérer les informations sur la ligue
+        league_info = None
+        for code, league in LEAGUE_MAPPING.items():
+            if int(league['id'].split('/')[0]) == league_id:
+                league_info = league
+                break
+        
+        # Formater les données pour le modèle
+        formatted_season = f"{season}/{season+1}"
+        
+        return render_template('api_football/standings.html',
+                              standings=standings_data,
+                              season=formatted_season,
+                              league_info=league_info)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des classements: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.index'))
+
+# Nouvelle route pour récupérer et afficher les statistiques d'une équipe
+@api_football_bp.route('/team-stats/<int:team_id>/<int:league_id>/<int:season>')
+def view_team_stats(team_id, league_id, season):
+    """Affiche les statistiques détaillées d'une équipe"""
+    try:
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les données de l'équipe
+        team_response = api_client._make_request('teams', {
+            'id': team_id
+        })
+        
+        if not team_response or 'response' not in team_response or not team_response['response']:
+            flash('Équipe non trouvée', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        team_data = team_response['response'][0]
+        
+        # Récupérer les statistiques de l'équipe
+        stats_response = api_client._make_request('teams/statistics', {
+            'team': team_id,
+            'league': league_id,
+            'season': season
+        })
+        
+        if not stats_response or 'response' not in stats_response:
+            flash('Aucune statistique disponible pour cette équipe', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        stats_data = stats_response['response']
+        
+        # Récupérer les matchs à venir de l'équipe
+        today = datetime.now().strftime('%Y-%m-%d')
+        next_month = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        fixtures_response = api_client._make_request('fixtures', {
+            'team': team_id,
+            'from': today,
+            'to': next_month,
+            'status': 'NS'
+        })
+        
+        upcoming_matches = []
+        if fixtures_response and 'response' in fixtures_response:
+            upcoming_matches = fixtures_response['response']
+        
+        # Formater la saison
+        formatted_season = f"{season}/{season+1}"
+        
+        return render_template('api_football/team_stats.html',
+                              team=team_data,
+                              stats=stats_data,
+                              upcoming_matches=upcoming_matches,
+                              season=formatted_season,
+                              league_id=league_id)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des statistiques d'équipe: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.index'))
+
+# Nouvelle route pour récupérer et afficher les joueurs d'une équipe
+@api_football_bp.route('/team-players/<int:team_id>/<int:season>')
+def view_team_players(team_id, season):
+    """Affiche les joueurs d'une équipe pour une saison donnée"""
+    try:
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les données de l'équipe
+        team_response = api_client._make_request('teams', {
+            'id': team_id
+        })
+        
+        if not team_response or 'response' not in team_response or not team_response['response']:
+            flash('Équipe non trouvée', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        team_data = team_response['response'][0]
+        
+        # Récupérer les joueurs de l'équipe
+        players_response = api_client._make_request('players/squads', {
+            'team': team_id
+        })
+        
+        if not players_response or 'response' not in players_response or not players_response['response']:
+            flash('Aucun joueur disponible pour cette équipe', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        players_data = players_response['response'][0]['players']
+        
+        # Récupérer les statistiques des joueurs
+        players_stats = []
+        for player in players_data:
+            stats_response = api_client._make_request('players', {
+                'id': player['id'],
+                'season': season,
+                'team': team_id
+            })
+            
+            if stats_response and 'response' in stats_response and stats_response['response']:
+                player_stats = stats_response['response'][0]
+                players_stats.append(player_stats)
+        
+        # Formater la saison
+        formatted_season = f"{season}/{season+1}"
+        
+        return render_template('api_football/team_players.html',
+                              team=team_data,
+                              players=players_stats,
+                              season=formatted_season)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des joueurs d'équipe: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.index'))
+
+# Nouvelle route pour récupérer et afficher les informations d'un joueur
+@api_football_bp.route('/player/<int:player_id>/<int:season>')
+def view_player(player_id, season):
+    """Affiche les informations et statistiques d'un joueur"""
+    try:
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les informations du joueur
+        player_response = api_client._make_request('players', {
+            'id': player_id,
+            'season': season
+        })
+        
+        if not player_response or 'response' not in player_response or not player_response['response']:
+            flash('Joueur non trouvé', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        player_data = player_response['response'][0]
+        
+        # Récupérer les transferts du joueur
+        transfers_response = api_client._make_request('transfers', {
+            'player': player_id
+        })
+        
+        transfers_data = []
+        if transfers_response and 'response' in transfers_response:
+            transfers_data = transfers_response['response']
+        
+        # Récupérer les trophées du joueur
+        trophies_response = api_client._make_request('trophies', {
+            'player': player_id
+        })
+        
+        trophies_data = []
+        if trophies_response and 'response' in trophies_response:
+            trophies_data = trophies_response['response']
+        
+        # Formater la saison
+        formatted_season = f"{season}/{season+1}"
+        
+        return render_template('api_football/player.html',
+                              player=player_data,
+                              transfers=transfers_data,
+                              trophies=trophies_data,
+                              season=formatted_season)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des informations du joueur: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.index'))
+
+# Nouvelle route pour récupérer et afficher les matchs
+@api_football_bp.route('/fixtures')
+def view_fixtures():
+    """Affiche les matchs selon différents critères"""
+    try:
+        # Récupérer les paramètres
+        date = request.args.get('date')
+        league_id = request.args.get('league')
+        team_id = request.args.get('team')
+        status = request.args.get('status', 'all')
+        
+        # Si aucune date n'est spécifiée, utiliser la date actuelle
+        if not date:
+            date = datetime.now().strftime('%Y-%m-%d')
+        
+        # Préparer les paramètres pour l'API
+        params = {}
+        
+        if date:
+            params['date'] = date
+        
+        if league_id:
+            params['league'] = league_id
+        
+        if team_id:
+            params['team'] = team_id
+            
+        if status != 'all':
+            params['status'] = status
+        
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les matchs
+        fixtures_response = api_client._make_request('fixtures', params)
+        
+        if not fixtures_response or 'response' not in fixtures_response:
+            flash('Aucun match trouvé pour ces critères', 'warning')
+            return redirect(url_for('api_football.index'))
+        
+        fixtures_data = fixtures_response['response']
+        
+        # Organiser les matchs par ligue
+        fixtures_by_league = {}
+        for fixture in fixtures_data:
+            league_name = fixture['league']['name']
+            league_id = fixture['league']['id']
+            league_country = fixture['league']['country']
+            league_logo = fixture['league']['logo']
+            
+            if league_name not in fixtures_by_league:
+                fixtures_by_league[league_name] = {
+                    'id': league_id,
+                    'country': league_country,
+                    'logo': league_logo,
+                    'fixtures': []
+                }
+            
+            fixtures_by_league[league_name]['fixtures'].append(fixture)
+        
+        # Si la date est spécifiée, la formater pour l'affichage
+        display_date = None
+        if date:
+            try:
+                display_date = datetime.strptime(date, '%Y-%m-%d').strftime('%d/%m/%Y')
+            except:
+                display_date = date
+        
+        return render_template('api_football/fixtures.html',
+                              fixtures_by_league=fixtures_by_league,
+                              date=date,
+                              display_date=display_date,
+                              league_id=league_id,
+                              team_id=team_id,
+                              status=status)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des matchs: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.index'))
+
+# Nouvelle route pour récupérer et afficher les détails d'un match
+@api_football_bp.route('/fixture/<int:fixture_id>')
+def view_fixture(fixture_id):
+    """Affiche les détails d'un match"""
+    try:
+        # Récupérer le client API
+        api_client = current_app.extensions['api_football']
+        
+        # Récupérer les informations du match
+        fixture_response = api_client._make_request('fixtures', {
+            'id': fixture_id
+        })
+        
+        if not fixture_response or 'response' not in fixture_response or not fixture_response['response']:
+            flash('Match non trouvé', 'warning')
+            return redirect(url_for('api_football.fixtures'))
+        
+        fixture_data = fixture_response['response'][0]
+        
+        # Récupérer les événements du match
+        events_response = api_client._make_request('fixtures/events', {
+            'fixture': fixture_id
+        })
+        
+        events_data = []
+        if events_response and 'response' in events_response:
+            events_data = events_response['response']
+        
+        # Récupérer les statistiques du match
+        stats_response = api_client._make_request('fixtures/statistics', {
+            'fixture': fixture_id
+        })
+        
+        stats_data = []
+        if stats_response and 'response' in stats_response:
+            stats_data = stats_response['response']
+        
+        # Récupérer les compositions d'équipe
+        lineups_response = api_client._make_request('fixtures/lineups', {
+            'fixture': fixture_id
+        })
+        
+        lineups_data = []
+        if lineups_response and 'response' in lineups_response:
+            lineups_data = lineups_response['response']
+        
+        # Récupérer les statistiques des joueurs
+        players_response = api_client._make_request('fixtures/players', {
+            'fixture': fixture_id
+        })
+        
+        players_data = []
+        if players_response and 'response' in players_response:
+            players_data = players_response['response']
+        
+        return render_template('api_football/fixture.html',
+                              fixture=fixture_data,
+                              events=events_data,
+                              stats=stats_data,
+                              lineups=lineups_data,
+                              players=players_data)
+                              
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des détails du match: {str(e)}")
+        flash(f"Une erreur s'est produite: {str(e)}", 'danger')
+        return redirect(url_for('api_football.fixtures'))

@@ -1,0 +1,470 @@
+{# app/templates/api_football/team_stats.html #}
+{% extends 'base.html' %}
+
+{% block title %}{{ team.team.name }} - Statistiques {% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h1 class="h3 mb-0">{{ team.team.name }} - Statistiques {{ season }}</h1>
+                    <img src="{{ team.team.logo }}" alt="{{ team.team.name }}" class="img-fluid" style="max-height: 60px;">
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Informations générales</h4>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th>Nom</th>
+                                        <td>{{ team.team.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Pays</th>
+                                        <td>{{ team.team.country }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fondé</th>
+                                        <td>{{ team.team.founded }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Stade</th>
+                                        <td>{{ team.venue.name }} ({{ team.venue.capacity|default('0') }} places)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h4 class="mt-4">Forme récente</h4>
+                            <div class="mb-3">
+                                {% if stats.form %}
+                                    {% for result in stats.form %}
+                                        {% if result == 'W' %}
+                                            <span class="badge bg-success fs-5 me-1">V</span>
+                                        {% elif result == 'D' %}
+                                            <span class="badge bg-warning fs-5 me-1">N</span>
+                                        {% elif result == 'L' %}
+                                            <span class="badge bg-danger fs-5 me-1">D</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">Aucune donnée de forme disponible</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h4>Résultats</h4>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="card bg-light mb-3">
+                                        <div class="card-body">
+                                            <h5 class="text-success">Victoires</h5>
+                                            <p class="display-5">{{ stats.fixtures.wins.total|default('0') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card bg-light mb-3">
+                                        <div class="card-body">
+                                            <h5 class="text-warning">Nuls</h5>
+                                            <p class="display-5">{{ stats.fixtures.draws.total|default('0') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card bg-light mb-3">
+                                        <div class="card-body">
+                                            <h5 class="text-danger">Défaites</h5>
+                                            <p class="display-5">{{ stats.fixtures.loses.total|default('0') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mt-3">Buts</h4>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="card bg-light mb-3">
+                                        <div class="card-body">
+                                            <h5 class="text-primary">Marqués</h5>
+                                            <p class="display-5">{{ stats.goals.for.total.total|default('0') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="card bg-light mb-3">
+                                        <div class="card-body">
+                                            <h5 class="text-primary">Encaissés</h5>
+                                            <p class="display-5">{{ stats.goals.against.total.total|default('0') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Statistiques détaillées</h2>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="statsTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="matches-tab" data-bs-toggle="tab" data-bs-target="#matches" type="button" role="tab" aria-controls="matches" aria-selected="true">Matchs</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button" role="tab" aria-controls="goals" aria-selected="false">Buts</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="cards-tab" data-bs-toggle="tab" data-bs-target="#cards" type="button" role="tab" aria-controls="cards" aria-selected="false">Cartes</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content pt-3" id="statsTabContent">
+                        <div class="tab-pane fade show active" id="matches" role="tabpanel" aria-labelledby="matches-tab">
+                            <h5>Domicile vs Extérieur</h5>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Domicile</th>
+                                        <th>Extérieur</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th>Matchs joués</th>
+                                        <td>{{ stats.fixtures.played.home|default('0') }}</td>
+                                        <td>{{ stats.fixtures.played.away|default('0') }}</td>
+                                        <td>{{ stats.fixtures.played.total|default('0') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Victoires</th>
+                                        <td>{{ stats.fixtures.wins.home|default('0') }}</td>
+                                        <td>{{ stats.fixtures.wins.away|default('0') }}</td>
+                                        <td>{{ stats.fixtures.wins.total|default('0') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Nuls</th>
+                                        <td>{{ stats.fixtures.draws.home|default('0') }}</td>
+                                        <td>{{ stats.fixtures.draws.away|default('0') }}</td>
+                                        <td>{{ stats.fixtures.draws.total|default('0') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Défaites</th>
+                                        <td>{{ stats.fixtures.loses.home|default('0') }}</td>
+                                        <td>{{ stats.fixtures.loses.away|default('0') }}</td>
+                                        <td>{{ stats.fixtures.loses.total|default('0') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="goals" role="tabpanel" aria-labelledby="goals-tab">
+                            <h5>Buts par mi-temps</h5>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Marqués</th>
+                                        <th>Encaissés</th>
+                                        <th>Différence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th>1ère mi-temps</th>
+                                        <td>{{ stats.goals.for.minute['0-15'].total + stats.goals.for.minute['16-30'].total + stats.goals.for.minute['31-45'].total|default('0') }}</td>
+                                        <td>{{ stats.goals.against.minute['0-15'].total + stats.goals.against.minute['16-30'].total + stats.goals.against.minute['31-45'].total|default('0') }}</td>
+                                        <td>{{ (stats.goals.for.minute['0-15'].total + stats.goals.for.minute['16-30'].total + stats.goals.for.minute['31-45'].total) - (stats.goals.against.minute['0-15'].total + stats.goals.against.minute['16-30'].total + stats.goals.against.minute['31-45'].total)|default('0') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>2ème mi-temps</th>
+                                        <td>{{ stats.goals.for.minute['46-60'].total + stats.goals.for.minute['61-75'].total + stats.goals.for.minute['76-90'].total|default('0') }}</td>
+                                        <td>{{ stats.goals.against.minute['46-60'].total + stats.goals.against.minute['61-75'].total + stats.goals.against.minute['76-90'].total|default('0') }}</td>
+                                        <td>{{ (stats.goals.for.minute['46-60'].total + stats.goals.for.minute['61-75'].total + stats.goals.for.minute['76-90'].total) - (stats.goals.against.minute['46-60'].total + stats.goals.against.minute['61-75'].total + stats.goals.against.minute['76-90'].total)|default('0') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Total</th>
+                                        <td>{{ stats.goals.for.total.total|default('0') }}</td>
+                                        <td>{{ stats.goals.against.total.total|default('0') }}</td>
+                                        <td>{{ stats.goals.for.total.total - stats.goals.against.total.total|default('0') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h5 class="mt-4">Répartition des buts</h5>
+                            <div class="progress mb-3" style="height: 25px;">
+                                {% for range, data in stats.goals.for.minute|dictsort %}
+                                    {% if range != 'total' %}
+                                        <div class="progress-bar bg-primary" role="progressbar" 
+                                             style="width: {{ (data.total / stats.goals.for.total.total * 100)|default(0)|round }}%;" 
+                                             aria-valuenow="{{ data.total }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ stats.goals.for.total.total }}">
+                                            {{ range }} min: {{ data.total }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="cards" role="tabpanel" aria-labelledby="cards-tab">
+                            <h5>Cartes reçues</h5>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Jaunes</th>
+                                        <th>Rouges</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set yellow_total = 0 %}
+                                    {% set red_total = 0 %}
+                                    {% for range, data in stats.cards.yellow|dictsort %}
+                                        {% if range != 'total' %}
+                                            {% set yellow_total = yellow_total + data.total|default(0) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% for range, data in stats.cards.red|dictsort %}
+                                        {% if range != 'total' %}
+                                            {% set red_total = red_total + data.total|default(0) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    <tr>
+                                        <th>Total</th>
+                                        <td>{{ yellow_total }}</td>
+                                        <td>{{ red_total }}</td>
+                                        <td>{{ yellow_total + red_total }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h5 class="mt-4">Répartition des cartons</h5>
+                            <div class="progress mb-3" style="height: 25px;">
+                                {% for range, data in stats.cards.yellow|dictsort %}
+                                    {% if range != 'total' and yellow_total > 0 %}
+                                        <div class="progress-bar bg-warning" role="progressbar" 
+                                             style="width: {{ (data.total / yellow_total * 100)|default(0)|round }}%;" 
+                                             aria-valuenow="{{ data.total }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ yellow_total }}">
+                                            {{ range }} min: {{ data.total }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Visualisations</h2>
+                </div>
+                <div class="card-body">
+                    <h5>Répartition des buts par mi-temps</h5>
+                    <canvas id="goalsChart" height="200"></canvas>
+                    
+                    <h5 class="mt-4">Performances domicile vs extérieur</h5>
+                    <canvas id="homeAwayChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Performances par minutes</h2>
+                </div>
+                <div class="card-body">
+                    <canvas id="minutesChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between mt-4">
+        <a href="{{ url_for('api_football.teams_list') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à la liste des équipes
+        </a>
+        <a href="{{ url_for('api_football.team_players', team_id=team.team.id) }}" class="btn btn-primary">
+            <i class="bi bi-people me-2"></i>Voir les joueurs
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Graphique de répartition des buts par mi-temps
+    const goalsCtx = document.getElementById('goalsChart').getContext('2d');
+    new Chart(goalsCtx, {
+        type: 'pie',
+        data: {
+            labels: ['1ère mi-temps (marqués)', '2ème mi-temps (marqués)', '1ère mi-temps (encaissés)', '2ème mi-temps (encaissés)'],
+            datasets: [{
+                data: [
+                    {{ stats.goals.for.minute['0-15'].total + stats.goals.for.minute['16-30'].total + stats.goals.for.minute['31-45'].total|default(0) }},
+                    {{ stats.goals.for.minute['46-60'].total + stats.goals.for.minute['61-75'].total + stats.goals.for.minute['76-90'].total|default(0) }},
+                    {{ stats.goals.against.minute['0-15'].total + stats.goals.against.minute['16-30'].total + stats.goals.against.minute['31-45'].total|default(0) }},
+                    {{ stats.goals.against.minute['46-60'].total + stats.goals.against.minute['61-75'].total + stats.goals.against.minute['76-90'].total|default(0) }}
+                ],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(54, 162, 235, 0.4)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(255, 99, 132, 0.4)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Répartition des buts par mi-temps'
+                }
+            }
+        }
+    });
+    
+    // Graphique domicile vs extérieur
+    const homeAwayCtx = document.getElementById('homeAwayChart').getContext('2d');
+    new Chart(homeAwayCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Victoires', 'Nuls', 'Défaites'],
+            datasets: [
+                {
+                    label: 'Domicile',
+                    data: [
+                        {{ stats.fixtures.wins.home|default(0) }}, 
+                        {{ stats.fixtures.draws.home|default(0) }}, 
+                        {{ stats.fixtures.loses.home|default(0) }}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Extérieur',
+                    data: [
+                        {{ stats.fixtures.wins.away|default(0) }}, 
+                        {{ stats.fixtures.draws.away|default(0) }}, 
+                        {{ stats.fixtures.loses.away|default(0) }}
+                    ],
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Performances domicile vs extérieur'
+                }
+            }
+        }
+    });
+    
+    // Graphique des performances par minutes
+    const minutesCtx = document.getElementById('minutesChart').getContext('2d');
+    new Chart(minutesCtx, {
+        type: 'line',
+        data: {
+            labels: ['0-15', '16-30', '31-45', '46-60', '61-75', '76-90', '91-105', '106-120'],
+            datasets: [
+                {
+                    label: 'Buts marqués',
+                    data: [
+                        {{ stats.goals.for.minute['0-15'].total|default(0) }},
+                        {{ stats.goals.for.minute['16-30'].total|default(0) }},
+                        {{ stats.goals.for.minute['31-45'].total|default(0) }},
+                        {{ stats.goals.for.minute['46-60'].total|default(0) }},
+                        {{ stats.goals.for.minute['61-75'].total|default(0) }},
+                        {{ stats.goals.for.minute['76-90'].total|default(0) }},
+                        {{ stats.goals.for.minute['91-105'].total|default(0) }},
+                        {{ stats.goals.for.minute['106-120'].total|default(0) }}
+                    ],
+                    fill: false,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Buts encaissés',
+                    data: [
+                        {{ stats.goals.against.minute['0-15'].total|default(0) }},
+                        {{ stats.goals.against.minute['16-30'].total|default(0) }},
+                        {{ stats.goals.against.minute['31-45'].total|default(0) }},
+                        {{ stats.goals.against.minute['46-60'].total|default(0) }},
+                        {{ stats.goals.against.minute['61-75'].total|default(0) }},
+                        {{ stats.goals.against.minute['76-90'].total|default(0) }},
+                        {{ stats.goals.against.minute['91-105'].total|default(0) }},
+                        {{ stats.goals.against.minute['106-120'].total|default(0) }}
+                    ],
+                    fill: false,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Performances par tranches de minutes'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
